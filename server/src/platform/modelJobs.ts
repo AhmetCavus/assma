@@ -1,27 +1,37 @@
 import { randomUUID } from "node:crypto";
-import type { CvImportJob, CvSuggestions } from "@assma/shared";
-import { notFound } from "../platform/errors.js";
+import { notFound } from "./errors.js";
 
-export type CvProgress = { found: number; part: number; parts: number };
+export type JobProgress = { found: number; part: number; parts: number };
 
-/** Reads one CV. Reports progress as it goes and stops when `signal` aborts. */
-export type CvReader = (
-  text: string,
+/** One model task. Reports progress as it goes and stops when `signal` aborts. */
+export type ModelTask<T> = (
   signal: AbortSignal,
-  progress: (update: CvProgress) => void,
-) => Promise<CvSuggestions>;
+  progress: (update: JobProgress) => void,
+) => Promise<T>;
+
+export type JobState = "queued" | "reading" | "done" | "failed";
+
+export type JobView<T> = {
+  id: string;
+  state: JobState;
+  /** Jobs ahead of this one while queued. */
+  position: number;
+  progress: JobProgress;
+  startedAt: string;
+  result: T | null;
+  error: string | null;
+};
 
 type Job = {
   id: string;
   ownerId: string;
-  state: CvImportJob["state"];
-  found: number;
-  part: number;
-  parts: number;
+  kind: string;
+  state: JobState;
+  progress: JobProgress;
   startedAt: Date;
-  /** Kept only until the model has read it. */
-  text: string | null;
-  suggestions: CvSuggestions | null;
+  /** Dropped once it has run, so the text it holds (a CV, a listing) is released. */
+  task: ModelTask<unknown> | null;
+  result: unknown;
   error: string | null;
   finishedAt: number | null;
   lastSeen: number;
@@ -31,19 +41,18 @@ type Job = {
 const MINUTE = 60_000;
 
 /**
- * In-memory queue for CV imports. The CPU-bound model reads one CV at a time; assma runs as
- * one API process, so memory is enough. Browsers slow timers in background tabs to about one
- * per minute, so a job is abandoned only after ten minutes without a poll. Results are
- * forgotten 30 minutes after they finish. The reader limits each part's time itself; the job
- * timeout is only a safety net.
+ * In-memory queue for everything the local model does (CV imports, listing suggestions).
+ * The CPU-bound model works on one task at a time; assma runs as one API process, so memory
+ * is enough. Browsers slow timers in background tabs to about one per minute, so a job is
+ * abandoned only after ten minutes without a poll. Results are forgotten 30 minutes after
+ * they finish. Tasks limit their own steps; the job timeout is only a safety net.
  */
-export class CvImportJobs {
+export class ModelJobs {
   private readonly jobs = new Map<string, Job>();
   private readonly queue: Job[] = [];
   private running: Job | null = null;
 
   constructor(
-    private readonly read: CvReader,
     private readonly limits = {
       timeoutMs: 60 * MINUTE,
       abandonAfterMs: 10 * MINUTE,
@@ -52,24 +61,23 @@ export class CvImportJobs {
     private readonly now = () => Date.now(),
   ) {}
 
-  /** Starts an import; an earlier unfinished import of the same person is cancelled. */
-  start(ownerId: string, text: string): CvImportJob {
+  /** Queues a task; an earlier unfinished job of the same person and kind is cancelled. */
+  start<T>(ownerId: string, kind: string, task: ModelTask<T>): JobView<T> {
     this.sweep();
     for (const job of this.jobs.values()) {
-      if (job.ownerId === ownerId) {
+      if (job.ownerId === ownerId && job.kind === kind) {
         this.remove(job, "replaced");
       }
     }
     const job: Job = {
       id: randomUUID(),
       ownerId,
+      kind,
       state: "queued",
-      found: 0,
-      part: 0,
-      parts: 1,
+      progress: { found: 0, part: 0, parts: 1 },
       startedAt: new Date(this.now()),
-      text,
-      suggestions: null,
+      task,
+      result: null,
       error: null,
       finishedAt: null,
       lastSeen: this.now(),
@@ -78,19 +86,19 @@ export class CvImportJobs {
     this.jobs.set(job.id, job);
     this.queue.push(job);
     this.pump();
-    return this.view(job);
+    return this.view<T>(job);
   }
 
-  /** Another person's job id behaves like an unknown one. */
-  get(ownerId: string, id: string): CvImportJob {
+  /** Another person's job, or one of another kind, behaves like an unknown one. */
+  get<T>(ownerId: string, kind: string, id: string): JobView<T> {
     this.sweep();
-    const job = this.owned(ownerId, id);
+    const job = this.owned(ownerId, kind, id);
     job.lastSeen = this.now();
-    return this.view(job);
+    return this.view<T>(job);
   }
 
-  cancel(ownerId: string, id: string): { id: string } {
-    this.remove(this.owned(ownerId, id), "cancelled");
+  cancel(ownerId: string, kind: string, id: string): { id: string } {
+    this.remove(this.owned(ownerId, kind, id), "cancelled");
     return { id };
   }
 
@@ -107,9 +115,9 @@ export class CvImportJobs {
     }
   }
 
-  private owned(ownerId: string, id: string): Job {
+  private owned(ownerId: string, kind: string, id: string): Job {
     const job = this.jobs.get(id);
-    if (!job || job.ownerId !== ownerId) {
+    if (!job || job.ownerId !== ownerId || job.kind !== kind) {
       throw notFound();
     }
     return job;
@@ -117,7 +125,7 @@ export class CvImportJobs {
 
   private remove(job: Job, reason: string): void {
     job.controller.abort(reason);
-    job.text = null;
+    job.task = null;
     this.jobs.delete(job.id);
     const index = this.queue.indexOf(job);
     if (index >= 0) {
@@ -125,17 +133,15 @@ export class CvImportJobs {
     }
   }
 
-  private view(job: Job): CvImportJob {
+  private view<T>(job: Job): JobView<T> {
     const index = this.queue.indexOf(job);
     return {
       id: job.id,
       state: job.state,
       position: index < 0 ? 0 : index + (this.running ? 1 : 0),
-      found: job.found,
-      part: job.part,
-      parts: job.parts,
+      progress: { ...job.progress },
       startedAt: job.startedAt.toISOString(),
-      suggestions: job.suggestions,
+      result: job.result as T | null,
       error: job.error,
     };
   }
@@ -162,13 +168,9 @@ export class CvImportJobs {
       AbortSignal.timeout(this.limits.timeoutMs),
     ]);
     try {
-      const suggestions = await this.read(job.text ?? "", signal, (update) => {
-        job.found = update.found;
-        job.part = update.part;
-        job.parts = update.parts;
+      job.result = await job.task!(signal, (update) => {
+        job.progress = update;
       });
-      job.suggestions = suggestions;
-      job.found = suggestions.references.length;
       job.state = "done";
     } catch (error) {
       job.state = "failed";
@@ -180,8 +182,12 @@ export class CvImportJobs {
             ? "model_unavailable"
             : "unreadable";
     } finally {
-      job.text = null;
+      job.task = null;
       job.finishedAt = this.now();
     }
   }
 }
+
+/** The one queue the API process shares between CV imports and listing suggestions. */
+export const modelJobs = new ModelJobs();
+setInterval(() => modelJobs.sweep(), 15_000).unref();

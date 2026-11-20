@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toApiError, type AccountInfo } from "@assma/shared";
 import { GrapeMark } from "../components/GrapeMark";
 import type { Preferences } from "../lib/preferences";
+import { useProjects } from "../lib/projects";
 import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
 
@@ -17,6 +18,9 @@ export function DashboardPage({
   const [references, setReferences] = useState<number | null>(null);
   const [error, setError] = useState("");
   const { api, signOut } = session;
+  const { projects } = useProjects(api, () => signOut(copy.common.sessionExpired));
+  const activeProjects = (projects ?? []).filter((project) => !project.archived).length;
+  const archivedProjects = (projects ?? []).length - activeProjects;
 
   // The server confirms the session; an expired or revoked token returns to the login.
   useEffect(() => {
@@ -68,6 +72,25 @@ export function DashboardPage({
           <p className="muted">{copy.dashboard.emptyLead}</p>
         </div>
       </section>
+      {projects !== null && (
+        <section className="empty-card">
+          <div>
+            <h2>{copy.dashboard.projectsTitle}</h2>
+            <p className="muted">
+              {projects.length === 0
+                ? copy.dashboard.projectsEmpty
+                : copy.dashboard.projectsCount(activeProjects, archivedProjects)}
+            </p>
+          </div>
+          <a
+            className="pill push-right"
+            href={projects.length === 0 ? "/projects/new" : "/projects"}
+            onClick={linkHandler(projects.length === 0 ? "/projects/new" : "/projects")}
+          >
+            {projects.length === 0 ? copy.projects.capture : copy.dashboard.projectsOpen}
+          </a>
+        </section>
+      )}
       {references !== null && (
         <section className="empty-card">
           <div>

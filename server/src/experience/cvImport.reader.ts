@@ -5,7 +5,13 @@ import {
   type CvSuggestions,
 } from "@assma/shared";
 import { streamStructured } from "../platform/ollama.js";
-import type { CvReader } from "./cvImport.jobs.js";
+import type { JobProgress } from "../platform/modelJobs.js";
+
+export type CvReader = (
+  text: string,
+  signal: AbortSignal,
+  progress: (update: JobProgress) => void,
+) => Promise<CvSuggestions>;
 import { contextFor, CV_SCHEMA, cvMessages } from "./cvImport.prompt.js";
 
 /**

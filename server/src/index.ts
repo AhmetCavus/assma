@@ -19,6 +19,7 @@ const { requireAccount } = await import("./platform/access.js");
 const { accountPublicRoutes, accountRoutes } = await import("./account/account.routes.js");
 const { adminRoutes } = await import("./admin/admin.routes.js");
 const { experienceRoutes } = await import("./experience/experience.routes.js");
+const { projectRoutes } = await import("./projects/project.routes.js");
 const { APP_VERSION } = await import("./platform/version.js");
 
 const app = new Yappio({
@@ -46,12 +47,15 @@ app.use((server) => {
   // Bodies are read only after the session check. A CV's text (100,000 characters, mostly
   // one to three bytes in UTF-8 plus JSON escapes) needs more room than everything else.
   const cvText = express.json({ limit: "512kb" });
+  // A CV (100,000 characters) or a captured listing with its brief (30,000 characters).
+  const large = (path: string) => path === "/experience/import" || path.startsWith("/projects");
   const regular = express.json({ limit: "64kb" });
   api.use(requireAccount(), (request, response, next) =>
-    (request.path === "/experience/import" ? cvText : regular)(request, response, next),
+    (large(request.path) ? cvText : regular)(request, response, next),
   );
   api.use("/account", accountRoutes);
   api.use("/experience", experienceRoutes);
+  api.use("/projects", projectRoutes);
   api.use("/admin", requireAccount(true), adminRoutes);
   server.use("/api/assma", api);
 });

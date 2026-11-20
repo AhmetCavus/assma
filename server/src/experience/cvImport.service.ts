@@ -3,18 +3,33 @@ import {
   cvImportRequestSchema,
   EXPERIENCE_LIMITS,
   type CvImportApplied,
+  type CvImportJob,
   type CvImportStatus,
+  type CvSuggestions,
 } from "@assma/shared";
 import type { Account } from "../platform/access.js";
 import { AssmaError } from "../platform/errors.js";
 import { modelAvailable, ollamaSettings } from "../platform/ollama.js";
 import { RateLimiter } from "../platform/rateLimit.js";
-import { CvImportJobs } from "./cvImport.jobs.js";
+import { modelJobs, type JobView } from "../platform/modelJobs.js";
 import { readCv } from "./cvImport.reader.js";
 import * as repository from "./experience.repository.js";
 
-export const jobs = new CvImportJobs(readCv);
-setInterval(() => jobs.sweep(), 15_000).unref();
+const KIND = "cv";
+
+function toCvJob(view: JobView<CvSuggestions>): CvImportJob {
+  return {
+    id: view.id,
+    state: view.state,
+    position: view.position,
+    found: view.result ? view.result.references.length : view.progress.found,
+    part: view.progress.part,
+    parts: view.progress.parts,
+    startedAt: view.startedAt,
+    suggestions: view.result,
+    error: view.error,
+  };
+}
 
 const importsPerAccount = new RateLimiter(20, 60 * 60 * 1000);
 
@@ -25,15 +40,17 @@ export async function status(): Promise<CvImportStatus> {
 export async function start(account: Account, input: unknown) {
   const { text } = cvImportRequestSchema.parse(input);
   importsPerAccount.attempt(account.id);
-  return jobs.start(account.id, text);
+  return toCvJob(
+    modelJobs.start(account.id, KIND, (signal, progress) => readCv(text, signal, progress)),
+  );
 }
 
 export async function job(account: Account, id: string) {
-  return jobs.get(account.id, id);
+  return toCvJob(modelJobs.get<CvSuggestions>(account.id, KIND, id));
 }
 
 export async function cancel(account: Account, id: string) {
-  return jobs.cancel(account.id, id);
+  return modelJobs.cancel(account.id, KIND, id);
 }
 
 /**

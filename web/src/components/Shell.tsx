@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Wordmark } from "./GrapeMark";
+import { GrapeMark, Wordmark } from "./GrapeMark";
 import { GitHubLink, LocaleSelect, ThemeButton } from "./Controls";
 import type { Preferences } from "../lib/preferences";
+import { useProjects } from "../lib/projects";
 import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
 
@@ -13,6 +14,9 @@ const ICONS: Record<string, ReactNode> = {
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
       <rect x="14" y="14" width="7" height="7" rx="1.5" />
     </>
+  ),
+  "/projects": (
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
   ),
   "/experience": (
     <>
@@ -35,11 +39,14 @@ export function Shell({
   children: ReactNode;
 }) {
   const { copy } = preferences;
-  // Projects (between Dashboard and Experience) and Progress follow in later iterations.
+  // Progress follows Experience in a later iteration.
   const items = [
     { path: "/dashboard", label: copy.nav.dashboard },
+    { path: "/projects", label: copy.nav.projects },
     { path: "/experience", label: copy.nav.experience },
   ];
+  const { projects } = useProjects(session.api, () => session.signOut(copy.common.sessionExpired));
+  const recent = (projects ?? []).filter((project) => !project.archived).slice(0, 6);
   return (
     <div className="workspace">
       <aside className="sidebar">
@@ -73,6 +80,28 @@ export function Shell({
             ))}
           </ul>
         </nav>
+        <section className="sidebar-projects" aria-labelledby="sidebar-projects-title">
+          <h3 id="sidebar-projects-title">{copy.projects.sidebarTitle}</h3>
+          <ul>
+            {recent.map((project) => (
+              <li key={project.id}>
+                <a
+                  href={`/projects/${project.id}`}
+                  onClick={linkHandler(`/projects/${project.id}`)}
+                  className={path === `/projects/${project.id}` ? "active" : ""}
+                  aria-current={path === `/projects/${project.id}` ? "page" : undefined}
+                >
+                  <GrapeMark size={18} />
+                  <span>{project.company || project.title}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+          <a className="pill" href="/projects/new" onClick={linkHandler("/projects/new")}>
+            <span aria-hidden="true">+</span>
+            {copy.projects.capture}
+          </a>
+        </section>
         <div className="sidebar-footer">
           <div className="sidebar-controls">
             <LocaleSelect preferences={preferences} />

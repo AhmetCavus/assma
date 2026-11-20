@@ -8,15 +8,25 @@ import { CvImportPage } from "./pages/CvImportPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ExperiencePage } from "./pages/ExperiencePage";
 import { LandingPage } from "./pages/LandingPage";
+import { ProjectEditorPage } from "./pages/ProjectEditorPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
 
-const WORKSPACE_PATHS = ["/dashboard", "/experience", "/experience/import"];
+const WORKSPACE_PATHS = [
+  "/dashboard",
+  "/projects",
+  "/projects/new",
+  "/experience",
+  "/experience/import",
+];
+const PROJECT_PATH = /^\/projects\/([a-f0-9]{24})$/;
 
 export default function App() {
   const preferences = usePreferences();
   const session = useSession(preferences.copy);
   const path = usePath();
   const signedIn = Boolean(session.profile);
-  const inWorkspace = WORKSPACE_PATHS.includes(path);
+  const projectId = PROJECT_PATH.exec(path)?.[1] ?? null;
+  const inWorkspace = WORKSPACE_PATHS.includes(path) || projectId !== null;
   const onAuthPage = path === "/login" || path === "/signup";
 
   useEffect(() => {
@@ -32,7 +42,18 @@ export default function App() {
   if (inWorkspace && signedIn) {
     return (
       <Shell session={session} preferences={preferences} path={path}>
-        {path === "/experience/import" ? (
+        {projectId ? (
+          <ProjectEditorPage
+            key={projectId}
+            id={projectId}
+            session={session}
+            preferences={preferences}
+          />
+        ) : path === "/projects/new" ? (
+          <ProjectEditorPage key="new" id={null} session={session} preferences={preferences} />
+        ) : path === "/projects" ? (
+          <ProjectsPage session={session} preferences={preferences} />
+        ) : path === "/experience/import" ? (
           <CvImportPage session={session} preferences={preferences} />
         ) : path === "/experience" ? (
           <ExperiencePage session={session} preferences={preferences} />

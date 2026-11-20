@@ -20,6 +20,15 @@ import {
   type CvImportApply,
   type CvImportRequest,
 } from "../cvImport.js";
+import {
+  listingFetchResultSchema,
+  listingJobSchema,
+  projectSchema,
+  type ListingFetchRequest,
+  type ListingSuggestRequest,
+  type ProjectChange,
+  type ProjectInput,
+} from "../projects.js";
 
 export const API_PREFIX = "/api/assma";
 
@@ -95,12 +104,52 @@ export class AssmaApi {
     return this.call("post", "/experience/import/apply", cvImportAppliedSchema, input);
   }
 
+  projects() {
+    return this.call("get", "/projects", z.array(projectSchema));
+  }
+
+  project(id: string) {
+    return this.call("get", `/projects/${id}`, projectSchema);
+  }
+
+  createProject(input: ProjectInput) {
+    return this.call("post", "/projects", projectSchema, input);
+  }
+
+  updateProject(id: string, input: ProjectInput) {
+    return this.call("put", `/projects/${id}`, projectSchema, input);
+  }
+
+  changeProject(id: string, input: ProjectChange) {
+    return this.call("patch", `/projects/${id}`, projectSchema, input);
+  }
+
+  deleteProject(id: string) {
+    return this.call("delete", `/projects/${id}`, z.object({ id: z.string() }));
+  }
+
+  fetchListing(input: ListingFetchRequest) {
+    return this.call("post", "/projects/listing/fetch", listingFetchResultSchema, input);
+  }
+
+  suggestListing(input: ListingSuggestRequest) {
+    return this.call("post", "/projects/listing/suggest", listingJobSchema, input);
+  }
+
+  listingSuggestion(id: string) {
+    return this.call("get", `/projects/listing/suggest/${id}`, listingJobSchema);
+  }
+
+  cancelListingSuggestion(id: string) {
+    return this.call("delete", `/projects/listing/suggest/${id}`, z.object({ id: z.string() }));
+  }
+
   adminOverview() {
     return this.call("get", "/admin/overview", adminOverviewSchema);
   }
 
   private async call<T>(
-    method: "get" | "post" | "put" | "delete",
+    method: "get" | "post" | "put" | "patch" | "delete",
     path: string,
     schema: Schema<T>,
     body?: object,

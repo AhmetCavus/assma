@@ -31,7 +31,25 @@ a time in memory, may take up to 15 minutes per part, are abandoned after 10 min
 a poll (browsers slow background tabs to about one request per minute) and expire 30 minutes
 after they finish.
 
-Projects, CVs, applications, statistics and the assistant follow in later iterations.
+**Iteration 4** adds the **project register** (`/projects`): Active and Archive tabs, search
+over title, end client and agency, status filters (captured, applied, in review, interview,
+closed), a row menu for status, archive and delete, and the newest active projects in the
+sidebar. A project is captured (`/projects/new`) from a link or listing text, where the local
+model suggests title, end client, agency, contact, tech stack, required and preferred
+experience and the working terms (about 30 seconds for a typical listing), or entered
+manually. Suggestions only fill empty fields, and the original link and listing text are
+kept as the source. Listing suggestions share the model queue with the CV import, so the CPU
+runs one model task at a time.
+
+"Load from link" fetches public pages only (`platform/safeFetch.ts`): http and https on
+default ports, at most three redirects, 2 MB and 10 seconds, and every connection (each
+redirect included) refuses private, loopback, link-local, shared, documentation and
+multicast addresses in the socket's own DNS lookup, so a link cannot reach MongoDB, Ollama or
+other containers. A schema.org JobPosting on the page is preferred over the page text. Pages
+that need a login or JavaScript report that the text should be pasted instead.
+
+The fit score, tailored CVs, applications, statistics and the assistant follow in later
+iterations.
 
 ## Structure
 
@@ -44,7 +62,9 @@ The npm workspaces follow [ellma](https://github.com/AhmetCavus/ellma):
   signed-in account under `/api/assma/account`. `experience/` serves the signed-in
   person's profile and references under `/api/assma/experience`, and the CV import jobs
   under `/api/assma/experience/import`; every query is scoped to the account.
-  `platform/ollama.ts` is the model client. `admin/` serves `/api/assma/admin`, for admin and root only. The boundary
+  `projects/` serves the project register and listing capture under `/api/assma/projects`.
+  `platform/ollama.ts` is the model client, `platform/modelJobs.ts` the shared model queue
+  and `platform/safeFetch.ts` the guarded fetch for listing links. `admin/` serves `/api/assma/admin`, for admin and root only. The boundary
   seals the account-security and experience collections from Yappio's generic collection
   API, so not even admins read that content there.
 - `web/`: React landing page (grape logo, light and dark theme, language, GitHub link),
