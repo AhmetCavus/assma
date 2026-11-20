@@ -6,6 +6,13 @@ import {
   loginResultSchema,
   type LoginRequest,
 } from "../account.js";
+import {
+  experienceProfileSchema,
+  experienceReferenceSchema,
+  experienceSchema,
+  type ProfileInput,
+  type ReferenceInput,
+} from "../experience.js";
 
 export const API_PREFIX = "/api/assma";
 
@@ -41,12 +48,32 @@ export class AssmaApi {
     return this.call("get", "/account", accountSchema);
   }
 
+  experience() {
+    return this.call("get", "/experience", experienceSchema);
+  }
+
+  saveProfile(input: ProfileInput) {
+    return this.call("put", "/experience/profile", experienceProfileSchema, input);
+  }
+
+  createReference(input: ReferenceInput) {
+    return this.call("post", "/experience/references", experienceReferenceSchema, input);
+  }
+
+  updateReference(id: string, input: ReferenceInput) {
+    return this.call("put", `/experience/references/${id}`, experienceReferenceSchema, input);
+  }
+
+  deleteReference(id: string) {
+    return this.call("delete", `/experience/references/${id}`, z.object({ id: z.string() }));
+  }
+
   adminOverview() {
     return this.call("get", "/admin/overview", adminOverviewSchema);
   }
 
   private async call<T>(
-    method: "get" | "post",
+    method: "get" | "post" | "put" | "delete",
     path: string,
     schema: Schema<T>,
     body?: object,
@@ -56,9 +83,9 @@ export class AssmaApi {
     let response: unknown;
     try {
       response =
-        method === "get"
-          ? await rest.get(url)
-          : await rest.post(url, (body ?? {}) as Record<string, unknown>);
+        method === "get" || method === "delete"
+          ? await rest[method](url)
+          : await rest[method](url, (body ?? {}) as Record<string, unknown>);
     } catch (error) {
       throw toApiError(error);
     }

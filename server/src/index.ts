@@ -18,6 +18,7 @@ const { installBoundaryFirst } = await import("./platform/boundary.js");
 const { requireAccount } = await import("./platform/access.js");
 const { accountPublicRoutes, accountRoutes } = await import("./account/account.routes.js");
 const { adminRoutes } = await import("./admin/admin.routes.js");
+const { experienceRoutes } = await import("./experience/experience.routes.js");
 const { APP_VERSION } = await import("./platform/version.js");
 
 const app = new Yappio({
@@ -44,6 +45,7 @@ app.use((server) => {
   const api = express.Router();
   api.use(express.json({ limit: "64kb" }), requireAccount());
   api.use("/account", accountRoutes);
+  api.use("/experience", experienceRoutes);
   api.use("/admin", requireAccount(true), adminRoutes);
   server.use("/api/assma", api);
 });

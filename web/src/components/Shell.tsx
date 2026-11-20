@@ -5,6 +5,23 @@ import type { Preferences } from "../lib/preferences";
 import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
 
+const ICONS: Record<string, ReactNode> = {
+  "/dashboard": (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  "/experience": (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+    </>
+  ),
+};
+
 /** Signed-in workspace. Dashboard is the first navigation item; later pages follow it. */
 export function Shell({
   session,
@@ -18,7 +35,11 @@ export function Shell({
   children: ReactNode;
 }) {
   const { copy } = preferences;
-  const items = [{ path: "/dashboard", label: copy.nav.dashboard }];
+  // Projects (between Dashboard and Experience) and Progress follow in later iterations.
+  const items = [
+    { path: "/dashboard", label: copy.nav.dashboard },
+    { path: "/experience", label: copy.nav.experience },
+  ];
   return (
     <div className="workspace">
       <aside className="sidebar">
@@ -44,10 +65,7 @@ export function Shell({
                     stroke="currentColor"
                     strokeWidth="2"
                   >
-                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    {ICONS[item.path]}
                   </svg>
                   {item.label}
                 </a>

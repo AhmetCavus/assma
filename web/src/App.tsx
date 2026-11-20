@@ -5,9 +5,10 @@ import { navigate, usePath } from "./lib/router";
 import { useSession } from "./lib/session";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ExperiencePage } from "./pages/ExperiencePage";
 import { LandingPage } from "./pages/LandingPage";
 
-const WORKSPACE_PATHS = ["/dashboard"];
+const WORKSPACE_PATHS = ["/dashboard", "/experience"];
 
 export default function App() {
   const preferences = usePreferences();
@@ -30,7 +31,11 @@ export default function App() {
   if (inWorkspace && signedIn) {
     return (
       <Shell session={session} preferences={preferences} path={path}>
-        <DashboardPage session={session} preferences={preferences} />
+        {path === "/experience" ? (
+          <ExperiencePage session={session} preferences={preferences} />
+        ) : (
+          <DashboardPage session={session} preferences={preferences} />
+        )}
       </Shell>
     );
   }

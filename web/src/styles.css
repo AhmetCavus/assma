@@ -437,3 +437,176 @@ h2 {
     padding: 24px;
   }
 }
+
+/* Experience */
+.status {
+  min-height: 1.5em;
+  margin: 8px 0 0;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.push-right {
+  margin-left: auto;
+}
+
+.experience-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.card {
+  padding: 20px 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: var(--shade);
+  min-width: 0;
+}
+
+.card h2 {
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+
+.reference-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.reference {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.reference h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--tint);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.reference-meta {
+  margin: 4px 0 8px;
+}
+
+.reference-body,
+.profile-summary {
+  margin: 0 0 10px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.reference-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  font-size: 0.92rem;
+}
+
+.pill svg {
+  flex: none;
+}
+
+.pill.wide {
+  width: 100%;
+  justify-content: center;
+}
+
+.profile-name {
+  margin: 14px 0 8px;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.profile-details {
+  display: grid;
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+
+.form.compact {
+  margin: 8px 0 0;
+  gap: 14px;
+}
+
+.form.compact h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.form textarea {
+  font: inherit;
+  font-weight: 400;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--input);
+  color: var(--ink);
+  resize: vertical;
+}
+
+.form input:disabled {
+  opacity: 0.55;
+}
+
+.form label small {
+  font-weight: 400;
+}
+
+.form .field-error {
+  color: var(--danger);
+}
+
+.form label.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-actions .danger {
+  margin-left: auto;
+  color: var(--danger);
+}
+
+@media (max-width: 760px) {
+  .experience-grid,
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}

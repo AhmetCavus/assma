@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toApiError, type AccountInfo } from "@assma/shared";
 import { GrapeMark } from "../components/GrapeMark";
 import type { Preferences } from "../lib/preferences";
+import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
 
 export function DashboardPage({
@@ -13,15 +14,20 @@ export function DashboardPage({
 }) {
   const { copy, locale } = preferences;
   const [account, setAccount] = useState<AccountInfo | null>(null);
+  const [references, setReferences] = useState<number | null>(null);
   const [error, setError] = useState("");
   const { api, signOut } = session;
 
   // The server confirms the session; an expired or revoked token returns to the login.
   useEffect(() => {
     let active = true;
-    api
-      .account()
-      .then((next) => active && setAccount(next))
+    Promise.all([api.account(), api.experience()])
+      .then(([next, experience]) => {
+        if (active) {
+          setAccount(next);
+          setReferences(experience.references.length);
+        }
+      })
       .catch((failure: unknown) => {
         if (!active) {
           return;
@@ -62,6 +68,21 @@ export function DashboardPage({
           <p className="muted">{copy.dashboard.emptyLead}</p>
         </div>
       </section>
+      {references !== null && (
+        <section className="empty-card">
+          <div>
+            <h2>{copy.dashboard.experienceTitle}</h2>
+            <p className="muted">
+              {references === 0
+                ? copy.dashboard.experienceEmpty
+                : copy.dashboard.experienceCount(references)}
+            </p>
+          </div>
+          <a className="pill push-right" href="/experience" onClick={linkHandler("/experience")}>
+            {copy.dashboard.experienceOpen}
+          </a>
+        </section>
+      )}
       {account ? (
         <p className="muted small" data-testid="signed-in-as">
           {copy.dashboard.signedInAs(account.email, copy.roles[account.role])}

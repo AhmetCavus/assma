@@ -6,8 +6,13 @@ A local assistant for freelance project acquisition. The design and concept are 
 
 **Iteration 1** brings the application up on the existing Yappio infrastructure. It
 contains the landing page, sign-in and a minimal Dashboard, plus a role-protected admin
-shell. assma is registered with Yoster. CVs, acquisition workflows, statistics and the
-assistant follow in later iterations.
+shell. assma is registered with Yoster.
+
+**Iteration 2** adds the **Experience** page: personal details (name, role, location,
+email, summary) and project references (client, role, period, own contribution,
+technologies). They are stored per account in Yappio and later feed the fit assessment and
+the tailored CV. Projects, CV import, CVs, applications, statistics and the assistant follow
+in later iterations.
 
 ## Structure
 
@@ -17,10 +22,14 @@ The npm workspaces follow [ellma](https://github.com/AhmetCavus/ellma):
 - `server/`: Yappio 1.3.1 bootstrap. `platform/` holds the CORS and platform boundary,
   the session and role gate (`requireAccount`), attempt limits and `yappio.ts` (the only
   file that reaches into Yappio's unexported services). `account/` serves sign-in and the
-  signed-in account under `/api/assma/account`. `admin/` serves `/api/assma/admin`, for
-  admin and root only.
+  signed-in account under `/api/assma/account`. `experience/` serves the signed-in
+  person's profile and references under `/api/assma/experience`; every query is scoped to
+  the account. `admin/` serves `/api/assma/admin`, for admin and root only. The boundary
+  seals the account-security and experience collections from Yappio's generic collection
+  API, so not even admins read that content there.
 - `web/`: React landing page (grape logo, light and dark theme, language, GitHub link),
-  sign-in and sign-up, and the workspace with Dashboard as the first navigation item.
+  sign-in and sign-up, and the workspace with Dashboard as the first navigation item,
+  followed by Experience.
 - `admin/`: separate React admin shell. It accepts only admin and root accounts, and
   the API checks the role again on every request.
 - `docker/`: Compose stack, Dockerfiles, nginx, the Traefik file route, environment
@@ -120,5 +129,5 @@ curl -H 'Host: assma-api.yappai.de' http://127.0.0.1/yappio/health
 
 Yoster scans its hosting root (`/srv/yappai/hosting`) and lists assma once `.env` exists.
 
-Public access also needs the Cloudflare tunnel to send `assma.yappai.de`,
-`assma-admin.yappai.de` and `assma-api.yappai.de` to the shared Traefik, as for ellma.
+The Cloudflare tunnel sends `assma.yappai.de`, `assma-admin.yappai.de` and
+`assma-api.yappai.de` to the shared Traefik, as for ellma.
