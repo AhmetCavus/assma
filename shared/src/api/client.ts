@@ -13,6 +13,13 @@ import {
   type ProfileInput,
   type ReferenceInput,
 } from "../experience.js";
+import {
+  cvImportAppliedSchema,
+  cvImportJobSchema,
+  cvImportStatusSchema,
+  type CvImportApply,
+  type CvImportRequest,
+} from "../cvImport.js";
 
 export const API_PREFIX = "/api/assma";
 
@@ -66,6 +73,26 @@ export class AssmaApi {
 
   deleteReference(id: string) {
     return this.call("delete", `/experience/references/${id}`, z.object({ id: z.string() }));
+  }
+
+  cvImportStatus() {
+    return this.call("get", "/experience/import/status", cvImportStatusSchema);
+  }
+
+  startCvImport(input: CvImportRequest) {
+    return this.call("post", "/experience/import", cvImportJobSchema, input);
+  }
+
+  cvImport(id: string) {
+    return this.call("get", `/experience/import/${id}`, cvImportJobSchema);
+  }
+
+  cancelCvImport(id: string) {
+    return this.call("delete", `/experience/import/${id}`, z.object({ id: z.string() }));
+  }
+
+  applyCvImport(input: CvImportApply) {
+    return this.call("post", "/experience/import/apply", cvImportAppliedSchema, input);
   }
 
   adminOverview() {

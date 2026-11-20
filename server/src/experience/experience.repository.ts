@@ -82,6 +82,16 @@ export async function createReference(
   return toReference(created.toObject() as StoredReference);
 }
 
+export async function createReferences(ownerId: string, list: ReferenceFields[]): Promise<void> {
+  if (list.length === 0) {
+    return;
+  }
+  const now = new Date();
+  await ReferenceModel.model.insertMany(
+    list.map((fields) => ({ ...fields, ownerId, createdAt: now, updatedAt: now })),
+  );
+}
+
 /** Only the owner's record matches, so another account's id behaves like an unknown one. */
 export async function updateReference(
   ownerId: string,

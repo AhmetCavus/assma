@@ -14,14 +14,16 @@ import {
   type ReferenceInput,
 } from "@assma/shared";
 import type { ZodError } from "zod";
+import { takeFlash } from "../lib/flash";
 import type { Preferences } from "../lib/preferences";
+import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
 
 type FieldErrors = Record<string, string>;
 type Editing = { kind: "profile" } | { kind: "reference"; id: string | null } | null;
 
 /** Turns the shared schema's issue codes into the visible message for each field. */
-function fieldErrors(error: ZodError, copy: Copy["experience"]): FieldErrors {
+export function fieldErrors(error: ZodError, copy: Copy["experience"]): FieldErrors {
   const messages: Record<string, string> = {
     required: copy.required,
     invalid_email: copy.invalidEmail,
@@ -76,7 +78,7 @@ export function ExperiencePage({
   const [experience, setExperience] = useState<Experience | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(takeFlash);
 
   function fail(failure: unknown) {
     const apiError = toApiError(failure);
@@ -156,8 +158,16 @@ export function ExperiencePage({
 
   return (
     <div className="page">
-      <h1>{text.title}</h1>
-      <p className="lead">{text.lead}</p>
+      <div className="page-header">
+        <div>
+          <h1>{text.title}</h1>
+          <p className="lead">{text.lead}</p>
+        </div>
+        <a className="button" href="/experience/import" onClick={linkHandler("/experience/import")}>
+          <UploadIcon />
+          {text.importCv}
+        </a>
+      </div>
       <p className="status" aria-live="polite">
         {status}
       </p>
@@ -181,7 +191,7 @@ export function ExperiencePage({
                   <li key={reference.id} className="reference">
                     <ReferenceForm
                       title={text.editReference(referenceLabel(index))}
-                      initial={reference}
+                      initial={{ ...reference, ongoing: reference.end === null }}
                       copy={copy}
                       onSave={(input) => saveReference(reference.id, input)}
                       onCancel={() => setEditing(null)}
@@ -379,7 +389,18 @@ type ReferenceDraft = {
   skills: string;
 };
 
-function ReferenceForm({
+/** What the reference form starts from: a saved reference or a suggestion from a CV. */
+export type ReferenceFormInitial = {
+  organization: string;
+  role: string;
+  start: string | null;
+  end: string | null;
+  ongoing: boolean;
+  contribution: string;
+  skills: string[];
+};
+
+export function ReferenceForm({
   title,
   initial,
   copy,
@@ -389,7 +410,7 @@ function ReferenceForm({
   onFailure,
 }: {
   title: string;
-  initial?: ExperienceReference;
+  initial?: ReferenceFormInitial;
   copy: Copy;
   onSave: (input: ReferenceInput) => Promise<void>;
   onCancel: () => void;
@@ -402,7 +423,7 @@ function ReferenceForm({
     role: initial?.role ?? "",
     start: initial?.start ?? "",
     end: initial?.end ?? "",
-    ongoing: initial ? initial.end === null : false,
+    ongoing: initial?.ongoing ?? false,
     contribution: initial?.contribution ?? "",
     skills: initial?.skills.join(", ") ?? "",
   });
@@ -533,7 +554,25 @@ function FormActions({
   );
 }
 
-function PencilIcon() {
+function UploadIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
+    </svg>
+  );
+}
+
+export function PencilIcon() {
   return (
     <svg
       viewBox="0 0 24 24"

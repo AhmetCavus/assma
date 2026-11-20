@@ -75,6 +75,9 @@ assert.equal(manifest.database.name, "assma");
 assert.equal(manifest.database.connectionRef, "shared-mongo");
 assert.equal(compose.services.api.environment.DBNAME, "assma");
 assert.ok(compose.services.api.environment.DB_URI.includes("DB_URI_DOCKER"));
+// The CV import reaches the shared Ollama container over dev-proxy, never the host port.
+assert.ok(compose.services.api.environment.OLLAMA_URL.includes("OLLAMA_URL_DOCKER"));
+assert.ok(compose.services.api.environment.OLLAMA_URL.includes("http://ollama:11434"));
 const example = await readFile(".env.example", "utf8");
 assert.match(example, /^DB_URI_DOCKER=mongodb:\/\/[^@]+@shared-mongo:27017\/assma\?/m);
 // The API must accept both browser apps, and each image must build its own site.

@@ -43,7 +43,13 @@ app.use((server) => {
   // Signing in works without a session, so it mounts first.
   server.use("/api/assma/account", express.json({ limit: "8kb" }), accountPublicRoutes);
   const api = express.Router();
-  api.use(express.json({ limit: "64kb" }), requireAccount());
+  // Bodies are read only after the session check. A CV's text (100,000 characters, mostly
+  // one to three bytes in UTF-8 plus JSON escapes) needs more room than everything else.
+  const cvText = express.json({ limit: "512kb" });
+  const regular = express.json({ limit: "64kb" });
+  api.use(requireAccount(), (request, response, next) =>
+    (request.path === "/experience/import" ? cvText : regular)(request, response, next),
+  );
   api.use("/account", accountRoutes);
   api.use("/experience", experienceRoutes);
   api.use("/admin", requireAccount(true), adminRoutes);

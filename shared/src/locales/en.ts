@@ -108,6 +108,74 @@ export const en = {
     tooManySkills: "Please list at most 20 technologies.",
     referenceLimit: "You have reached the limit of 100 references.",
     notFound: "This reference no longer exists. The list has been reloaded.",
+    importCv: "Import CV",
+    imported: (references: number, fields: number) =>
+      [
+        references === 1 ? "1 reference imported" : `${references} references imported`,
+        fields > 0
+          ? fields === 1
+            ? "1 personal detail added"
+            : `${fields} personal details added`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(", ") + ".",
+  },
+  cvImport: {
+    title: "Import CV",
+    lead: "assma reads your CV with the local model on this server and suggests references. You confirm what is saved.",
+    chooseTitle: "Your CV",
+    chooseLead:
+      "PDF, Word (.docx) or text file, up to 10 MB. The file stays in your browser; only its text is sent to assma.",
+    chooseFile: "Choose file",
+    dropHint: "or drop it here",
+    pasteLabel: "Or paste the text of your CV",
+    read: "Read CV",
+    back: "Back to experience",
+    extracting: "Extracting text…",
+    queued: (ahead: number) =>
+      ahead === 1 ? "Waiting for 1 other import…" : `Waiting for ${ahead} other imports…`,
+    reading: "assma is reading your CV…",
+    readingHint: (min: number, max: number) =>
+      `The model runs on this server's processor. For this CV, expect about ${min === max ? min : `${min}–${max}`} ${max === 1 ? "minute" : "minutes"}. You can leave this tab in the background.`,
+    found: (count: number) =>
+      count === 0
+        ? "No positions recognised yet."
+        : count === 1
+          ? "1 position recognised so far."
+          : `${count} positions recognised so far.`,
+    elapsed: (seconds: number) =>
+      `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} elapsed`,
+    cancel: "Cancel",
+    sourceTitle: "Source document",
+    suggestionsTitle: "Suggestions from assma",
+    reviewTitle: "Review the CV import",
+    reviewLead: "Compare the suggestions with your CV and confirm your selection.",
+    profileSuggestion: "Personal details",
+    profileFillHint: "Only fills fields that are still empty.",
+    profileNothing: "Your personal details are already complete.",
+    known: "Already in your references",
+    needsReview: "Please add the missing details",
+    edit: "Edit",
+    apply: "Apply selection",
+    nothingSelected: "Select at least one suggestion.",
+    nothingFound:
+      "assma found no positions in this text. Check the extracted text or enter the references manually.",
+    unavailable:
+      "The CV import is unavailable right now: the local model is not reachable. You can still enter references manually.",
+    unsupported: "This file type is not supported. Use PDF, .docx, .txt or .md, or paste the text.",
+    tooLarge: "The file is larger than 10 MB.",
+    noText:
+      "No text could be read from this file. A scanned PDF has no text layer; paste the text instead.",
+    tooShort: "The text is too short to be a CV.",
+    tooLong:
+      "The text is longer than 100,000 characters. Shorten it, for example by removing older positions.",
+    part: (part: number, parts: number) => `Part ${part} of ${parts}`,
+    failed: "assma could not read this CV. Try again or paste the text.",
+    timeout: "Reading took too long and was stopped. Try a shorter text.",
+    tooMany: "You have started many imports in the last hour. Please try again later.",
+    expired: "This import has expired. Please start again.",
+    startOver: "Start over",
   },
   roles: {
     user: "user",

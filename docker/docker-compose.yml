@@ -62,6 +62,9 @@ services:
       DBNAME: assma
       DB_URI: ${DB_URI_DOCKER:?Configure the server-side shared-mongo URI}
       ALLOWED_ORIGINS: ${ASSMA_WEB_URL:-https://assma.yappai.de},${ASSMA_ADMIN_URL:-https://assma-admin.yappai.de}
+      # Open-weight model served by the shared Ollama container on dev-proxy (as for ellma).
+      OLLAMA_URL: ${OLLAMA_URL_DOCKER:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3.5:4b}
     expose: ["4100"]
     networks: [dev-proxy]
     security_opt: [no-new-privileges:true]

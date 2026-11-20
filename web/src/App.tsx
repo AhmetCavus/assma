@@ -4,11 +4,12 @@ import { usePreferences } from "./lib/preferences";
 import { navigate, usePath } from "./lib/router";
 import { useSession } from "./lib/session";
 import { AuthPage } from "./pages/AuthPage";
+import { CvImportPage } from "./pages/CvImportPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ExperiencePage } from "./pages/ExperiencePage";
 import { LandingPage } from "./pages/LandingPage";
 
-const WORKSPACE_PATHS = ["/dashboard", "/experience"];
+const WORKSPACE_PATHS = ["/dashboard", "/experience", "/experience/import"];
 
 export default function App() {
   const preferences = usePreferences();
@@ -31,7 +32,9 @@ export default function App() {
   if (inWorkspace && signedIn) {
     return (
       <Shell session={session} preferences={preferences} path={path}>
-        {path === "/experience" ? (
+        {path === "/experience/import" ? (
+          <CvImportPage session={session} preferences={preferences} />
+        ) : path === "/experience" ? (
           <ExperiencePage session={session} preferences={preferences} />
         ) : (
           <DashboardPage session={session} preferences={preferences} />

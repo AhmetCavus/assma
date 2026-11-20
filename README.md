@@ -11,8 +11,27 @@ shell. assma is registered with Yoster.
 **Iteration 2** adds the **Experience** page: personal details (name, role, location,
 email, summary) and project references (client, role, period, own contribution,
 technologies). They are stored per account in Yappio and later feed the fit assessment and
-the tailored CV. Projects, CV import, CVs, applications, statistics and the assistant follow
-in later iterations.
+the tailored CV.
+
+**Iteration 3** adds the **CV import** (`/experience/import`). The browser extracts the text
+of a PDF, Word (.docx) or text file (pdf.js and mammoth, loaded on demand), so the file never
+leaves the device; pasted text works too. The API queues the text as a background job and
+the shared Ollama container (`OLLAMA_MODEL`, default `qwen3.5:4b`, CPU) reads it into
+suggestions with a JSON schema. The page polls the job, shows progress and then the source
+next to the suggestions. Incomplete entries are flagged for editing, entries matching an
+existing reference start unchecked, and personal details only fill empty fields. Nothing is
+saved until the person applies the selection.
+
+CVs of up to 100,000 characters are read in parts of about 12,000 characters (split at
+paragraph breaks, with a small overlap) and the parts' suggestions are merged, so the prompt
+always fits the model context. The page shows the part being read and an estimated duration.
+On the shared CPU, reading runs at about 55 tokens/s and writing takes 10–12 seconds per
+position: a short CV needs 1–2 minutes, 30,000 characters about 5–10 minutes. Jobs run one at
+a time in memory, may take up to 15 minutes per part, are abandoned after 10 minutes without
+a poll (browsers slow background tabs to about one request per minute) and expire 30 minutes
+after they finish.
+
+Projects, CVs, applications, statistics and the assistant follow in later iterations.
 
 ## Structure
 
@@ -23,8 +42,9 @@ The npm workspaces follow [ellma](https://github.com/AhmetCavus/ellma):
   the session and role gate (`requireAccount`), attempt limits and `yappio.ts` (the only
   file that reaches into Yappio's unexported services). `account/` serves sign-in and the
   signed-in account under `/api/assma/account`. `experience/` serves the signed-in
-  person's profile and references under `/api/assma/experience`; every query is scoped to
-  the account. `admin/` serves `/api/assma/admin`, for admin and root only. The boundary
+  person's profile and references under `/api/assma/experience`, and the CV import jobs
+  under `/api/assma/experience/import`; every query is scoped to the account.
+  `platform/ollama.ts` is the model client. `admin/` serves `/api/assma/admin`, for admin and root only. The boundary
   seals the account-security and experience collections from Yappio's generic collection
   API, so not even admins read that content there.
 - `web/`: React landing page (grape logo, light and dark theme, language, GitHub link),
@@ -37,7 +57,8 @@ The npm workspaces follow [ellma](https://github.com/AhmetCavus/ellma):
 
 ## Install
 
-Requires Node.js 22 or later, Docker, and access to the internal Verdaccio registry
+Requires Node.js 22 or later, Docker, the shared `ollama` container on `dev-proxy` with
+`qwen3.5:4b` installed (for the CV import), and access to the internal Verdaccio registry
 (`http://192.168.178.131:4873/`, set in `.npmrc`). The registry serves `yappio@1.3.1`
 and `yappio-client@1.0.1` and proxies the public registry.
 

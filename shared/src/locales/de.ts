@@ -110,6 +110,76 @@ export const de: Copy = {
     tooManySkills: "Bitte nenne höchstens 20 Technologien.",
     referenceLimit: "Du hast die Grenze von 100 Referenzen erreicht.",
     notFound: "Diese Referenz gibt es nicht mehr. Die Liste wurde neu geladen.",
+    importCv: "CV importieren",
+    imported: (references: number, fields: number) =>
+      [
+        references === 1 ? "1 Referenz importiert" : `${references} Referenzen importiert`,
+        fields > 0
+          ? fields === 1
+            ? "1 persönliche Angabe ergänzt"
+            : `${fields} persönliche Angaben ergänzt`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(", ") + ".",
+  },
+  cvImport: {
+    title: "CV importieren",
+    lead: "assma liest deinen CV mit dem lokalen Modell auf diesem Server und schlägt Referenzen vor. Du bestätigst, was gespeichert wird.",
+    chooseTitle: "Dein CV",
+    chooseLead:
+      "PDF, Word (.docx) oder Textdatei, bis 10 MB. Die Datei bleibt in deinem Browser; nur ihr Text wird an assma gesendet.",
+    chooseFile: "Datei wählen",
+    dropHint: "oder hier ablegen",
+    pasteLabel: "Oder füge den Text deines CVs ein",
+    read: "CV lesen",
+    back: "Zurück zur Erfahrung",
+    extracting: "Text wird ausgelesen…",
+    queued: (ahead: number) =>
+      ahead === 1 ? "Wartet auf 1 anderen Import…" : `Wartet auf ${ahead} andere Importe…`,
+    reading: "assma liest deinen CV…",
+    readingHint: (min: number, max: number) =>
+      `Das Modell läuft auf dem Prozessor dieses Servers. Bei diesem CV dauert es etwa ${min === max ? min : `${min}–${max}`} ${max === 1 ? "Minute" : "Minuten"}. Du kannst den Tab im Hintergrund lassen.`,
+    found: (count: number) =>
+      count === 0
+        ? "Noch keine Stationen erkannt."
+        : count === 1
+          ? "Bisher 1 Station erkannt."
+          : `Bisher ${count} Stationen erkannt.`,
+    elapsed: (seconds: number) =>
+      `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} vergangen`,
+    cancel: "Abbrechen",
+    sourceTitle: "Quelldokument",
+    suggestionsTitle: "Vorschläge von assma",
+    reviewTitle: "CV-Import prüfen",
+    reviewLead: "Vergleiche die vorgeschlagenen Angaben mit deinem CV und bestätige deine Auswahl.",
+    profileSuggestion: "Persönliche Angaben",
+    profileFillHint: "Füllt nur Felder, die noch leer sind.",
+    profileNothing: "Deine persönlichen Angaben sind bereits vollständig.",
+    known: "Bereits in deinen Referenzen",
+    needsReview: "Bitte ergänze die fehlenden Angaben",
+    edit: "Bearbeiten",
+    apply: "Auswahl übernehmen",
+    nothingSelected: "Wähle mindestens einen Vorschlag aus.",
+    nothingFound:
+      "assma hat in diesem Text keine Stationen gefunden. Prüfe den ausgelesenen Text oder trage die Referenzen manuell ein.",
+    unavailable:
+      "Der CV-Import ist gerade nicht verfügbar: Das lokale Modell ist nicht erreichbar. Du kannst Referenzen weiterhin manuell eintragen.",
+    unsupported:
+      "Dieser Dateityp wird nicht unterstützt. Verwende PDF, .docx, .txt oder .md oder füge den Text ein.",
+    tooLarge: "Die Datei ist größer als 10 MB.",
+    noText:
+      "Aus dieser Datei ließ sich kein Text lesen. Ein gescanntes PDF hat keine Textebene; füge den Text stattdessen ein.",
+    tooShort: "Der Text ist zu kurz für einen CV.",
+    tooLong:
+      "Der Text ist länger als 100.000 Zeichen. Kürze ihn, zum Beispiel um ältere Stationen.",
+    part: (part: number, parts: number) => `Teil ${part} von ${parts}`,
+    failed: "assma konnte diesen CV nicht lesen. Versuche es erneut oder füge den Text ein.",
+    timeout: "Das Lesen hat zu lange gedauert und wurde abgebrochen. Versuche einen kürzeren Text.",
+    tooMany:
+      "Du hast in der letzten Stunde viele Importe gestartet. Bitte versuche es später erneut.",
+    expired: "Dieser Import ist abgelaufen. Bitte starte neu.",
+    startOver: "Neu beginnen",
   },
   roles: {
     user: "Nutzer",
