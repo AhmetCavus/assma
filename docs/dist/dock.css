@@ -1,0 +1,79 @@
+/* The compact launcher leaves the page clear. The expanded assistant follows ellma's bottom-centred layout. */
+.dock-launch, .grape-orb {
+  display:inline-grid; place-items:center; position:relative; flex:none; padding:0;
+  border-radius:50%; border:1px solid var(--tint-edge); color:var(--accent);
+  background:radial-gradient(ellipse at 52% 64%,var(--tint),var(--panel) 82%);
+  box-shadow:0 3px 16px var(--glow); isolation:isolate;
+}
+.dock-launch {position:fixed; right:max(18px,env(safe-area-inset-right)); bottom:max(18px,env(safe-area-inset-bottom)); z-index:8; width:54px; height:54px}
+.dock-launch span {position:absolute; top:0; right:0; width:9px; height:9px; background:var(--accent); border:2px solid var(--bg); border-radius:100%}
+.dock-launch img,.grape-orb img {position:relative; z-index:1; animation:grape-breathe 3.4s ease-in-out infinite}
+.dock-launch::before,.orb-ring {content:"";position:absolute;inset:-3px; border:1px solid var(--accent); border-radius:50%; pointer-events:none; animation:orb-halo 3.4s ease-out infinite}
+@keyframes grape-breathe {0%,100%{transform:scale(.96)}50%{transform:scale(1.06)}}
+@keyframes orb-halo {0%{transform:scale(.94);opacity:.32}76%,100%{transform:scale(1.22);opacity:0}}
+.assma-dock {
+  position:fixed; bottom:max(16px,env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+  z-index:9; width:min(820px,calc(100% - 36px)); max-height:min(72dvh,670px); overflow:auto;
+  overscroll-behavior:contain; background:var(--panel); color:var(--ink); border:1px solid var(--line);
+  border-radius:27px; padding:15px 17px 12px; box-shadow:0 16px 48px rgba(12,8,16,.23),0 0 32px var(--glow);
+  outline:none; scroll-behavior:auto;
+}
+.dock-bar {display:grid; grid-template-columns:60px minmax(0,1fr) auto; gap:14px; align-items:start}
+.grape-orb {width:59px;height:59px;align-self:center}
+.grape-orb img {width:39px;height:39px}
+.assma-dock[data-phase=listening] .orb-ring,.assma-dock[data-phase=listening] .grape-orb img {animation-duration:1.15s}
+.assma-dock[data-phase=listening] .grape-orb {border-color:var(--accent);box-shadow:0 0 18px var(--tint-edge)}
+.dock-content {min-width:0;align-self:center}.dock-line {display:block;font-size:1.07rem;line-height:1.45;font-weight:500;letter-spacing:-.018em;overflow-wrap:anywhere}
+.dock-line.answer {white-space:pre-line}.dock-small,.dock-tip,.history-title small {color:var(--sub);font-size:.83rem}
+.dock-small {margin-bottom:.3rem}.dock-small b {font-size:.7rem;letter-spacing:.075em;margin-right:.28rem}
+.dock-actions,.dock-tools,.dock-keys,.dock-prompts,.period-nav,.period-unit {display:flex;align-items:center;flex-wrap:wrap}
+.dock-actions {margin-top:.55rem;gap:.45rem}.dock-actions .btn {min-height:33px;font-size:.85rem;padding:.42rem .9rem}
+.dock-tools{flex-wrap:nowrap;gap:.12rem}
+.dock-tool {display:inline-grid;place-items:center;width:32px;height:32px;border:1px solid transparent;border-radius:50%;background:transparent;color:var(--sub);padding:0}
+.dock-tool:hover,.dock-tool[aria-pressed=true],.dock-tool[aria-expanded=true]{background:var(--raised);color:var(--accent)}
+.dock-tool:disabled{opacity:.35}.dock-tool .ic{width:17px;height:17px}
+.dock-bottom{display:flex;flex-direction:column;gap:.42rem;border-top:1px solid var(--line);margin-top:.75rem;padding-top:.56rem}
+.dock-keys{gap:.22rem .72rem}
+.key-hint {display:inline-flex;align-items:center;gap:.35rem;padding:0;border:0;background:transparent;color:var(--sub);font-size:.82rem;line-height:1.35}
+.key-hint:hover {color:var(--ink)}
+.key-hint kbd,.shortcut-row kbd {font:inherit;font-size:.82rem;line-height:1.25;display:inline-block;padding:.23rem .48rem;background:var(--bg);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;white-space:nowrap}
+.dock-prompts{gap:.35rem}.dock-prompts .chip{display:inline-flex;align-items:center;color:var(--sub);font-size:.82rem;background:transparent}.dock-prompts .chip:hover{color:var(--ink);background:var(--raised)}
+.dock-prompts .ic{width:15px;height:15px}
+.dock-compose{display:flex;gap:.4rem;margin-top:.35rem}.dock-compose input{min-width:0;flex:1}.dock-compose .btn{padding:.5rem .78rem}.dock-compose .in{min-height:39px}
+#dock-transcript:not(:empty){font-style:italic;color:var(--accent);margin-top:.2rem}
+.dock-history{border-bottom:1px solid var(--line);padding:0 .35rem .8rem;margin:0 0 .85rem}
+.history-title{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.55rem}
+.history-title h2{font-size:1rem}.history-messages{overflow:auto;max-height:min(28dvh,210px);display:grid;gap:.5rem}
+.history-message{border-left:2px solid var(--tint-edge);padding:.24rem .7rem;font-size:.9rem;white-space:pre-line}.history-message b{color:var(--accent);font-size:.76rem}.history-message.mine{border-color:var(--line)}.history-message.mine b{color:var(--sub)}
+body[data-dock=open] .inline-guide{display:none}
+body[data-dock=open] .appbody{padding-bottom:calc(var(--dock-height,170px) + 44px)}
+body[data-dock=open] .foot {margin-bottom:calc(var(--dock-height,170px) + 27px)}
+body[data-dock=open] #notice {bottom:calc(var(--dock-height,170px) + 27px)}
+.shortcut-dialog{width:min(735px,calc(100% - 36px));padding:1.42rem 1.5rem 1rem;border-radius:20px}
+.shortcut-dialog::backdrop {background:rgb(16 12 12/.65);backdrop-filter:blur(3px)}
+.shortcut-dialog header {margin:0 0 1.2rem}
+.shortcut-dialog h2{font-size:1.18rem}.shortcut-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:2.4rem;row-gap:1.05rem}
+.shortcut-grid h3{text-transform:uppercase;letter-spacing:.075em;color:var(--accent);font-size:.79rem;margin-bottom:.58rem}
+.shortcut-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:.8rem;min-height:29px;margin-bottom:.28rem}
+.shortcut-row kbd{color:var(--ink);justify-self:start;font-size:.79rem}.shortcut-row span{text-align:right;color:var(--sub);line-height:1.45;font-size:.9rem}
+.shortcut-dialog .shortcut-foot{font-size:.82rem;margin-top:1rem}.rail-foot .dock-tool{width:31px;height:31px}
+.progress-controls{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin:0 0 1.05rem;flex-wrap:wrap}.period-unit,.period-nav{gap:.3rem}.period-nav>span{font-size:.85rem;text-align:center;min-width:130px;color:var(--sub)}
+.progress-stats small{font-size:.81rem;color:var(--sub)}.progress-plot{display:flex;align-items:end;gap:clamp(.35rem,1.7vw,1.35rem);padding:.9rem .4rem .25rem}.plot-bin{flex:1;min-width:0;text-align:center;display:grid;justify-items:center}.plot-bin span,.plot-bin strong{font-size:.78rem;color:var(--sub)}.plot-bin strong {color:var(--ink);margin-top:.2rem}.plot-track{position:relative;display:flex;align-items:flex-end;min-width:9px;width:100%;max-width:45px;height:108px;background:var(--raised);border-radius:7px;overflow:hidden}.plot-track i,.channel-track i{display:block;background:var(--accent);width:100%;border-radius:inherit}.channel-list{list-style:none;padding:.3rem 0;margin:0;display:grid;gap:1.2rem}.channel-list li>div{display:flex;align-items:center;justify-content:space-between;gap:.5rem;font-size:.9rem}.channel-list li div span{font-size:.82rem;color:var(--sub)}.channel-track{display:block;height:5px;background:var(--raised);border-radius:99px;margin-top:.45rem}.channel-track i{height:100%}.channel-list li+li i{background:var(--sub)}
+@media(max-width:650px){
+ .assma-dock{width:calc(100% - 16px);bottom:max(8px,env(safe-area-inset-bottom));padding:12px;border-radius:19px;max-height:68dvh}
+ .dock-bar{grid-template-columns:44px minmax(0,1fr);align-items:start;gap:2px 10px}
+ .grape-orb{width:42px;height:42px;grid-column:1;grid-row:1;align-self:start;margin-top:2px}.grape-orb img{width:29px;height:29px}
+ .dock-content{grid-column:2;grid-row:1/3}.dock-tools{grid-column:1;grid-row:2;flex-wrap:wrap;justify-content:center;align-self:start;margin-top:3px;gap:0;width:44px}
+ .dock-tools .dock-tool{width:22px;height:27px}.dock-tools .dock-tool:last-child{width:36px}.dock-tool .ic{width:15px;height:15px}
+ .dock-line{font-size:.97rem}.dock-actions .btn{min-height:32px;font-size:.81rem;padding:.4rem .65rem}
+ .dock-bottom{margin-top:.52rem;gap:.45rem}.dock-keys{gap:.35rem .55rem}.key-hint,.key-hint kbd,.dock-prompts .chip{font-size:.75rem}.key-hint kbd{padding:.2rem .35rem}
+ .dock-prompts{flex-wrap:nowrap;overflow:auto;scrollbar-width:thin;padding:2px 1px 3px}.dock-prompts .chip{flex:none;white-space:nowrap;min-height:31px}
+ .shortcut-dialog{padding:1.1rem;width:calc(100% - 24px);max-height:83dvh}.shortcut-grid{grid-template-columns:1fr;gap:.7rem}.shortcut-row{min-height:26px}.shortcut-grid h3{margin-bottom:.35rem}.shortcut-dialog header{margin-bottom:.65rem}
+ .progress-stats small{font-size:.72rem}.progress-plot{gap:.5rem}.period-nav>span{min-width:108px}
+}
+@media(prefers-reduced-motion:reduce){
+ .dock-launch img,.grape-orb img,.dock-launch::before,.orb-ring {animation:none!important;transform:none}
+ .dock-launch::before,.orb-ring{opacity:0}
+ .assma-dock[data-phase=listening] .orb-ring{opacity:.6}
+}
+
