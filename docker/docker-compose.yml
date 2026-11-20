@@ -1,0 +1,84 @@
+name: assma
+
+services:
+  web:
+    container_name: assma-web
+    build:
+      context: ..
+      dockerfile: docker/web.Dockerfile
+      target: runtime
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-http://192.168.178.131:4873/}
+        VITE_API_URL: ${ASSMA_API_URL:-https://assma-api.yappai.de}
+    restart: unless-stopped
+    expose: ["80"]
+    networks: [dev-proxy]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1/health]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    labels:
+      # The shared Traefik routes through docker/traefik.yml (file provider), not labels.
+      traefik.enable: "false"
+
+  admin:
+    container_name: assma-admin
+    build:
+      context: ..
+      dockerfile: docker/web.Dockerfile
+      target: admin
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-http://192.168.178.131:4873/}
+        VITE_API_URL: ${ASSMA_API_URL:-https://assma-api.yappai.de}
+    restart: unless-stopped
+    expose: ["80"]
+    networks: [dev-proxy]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1/health]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    labels:
+      traefik.enable: "false"
+
+  api:
+    container_name: assma-api
+    build:
+      context: ..
+      dockerfile: docker/server.Dockerfile
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-http://192.168.178.131:4873/}
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      PORT: "4100"
+      DB_ENGINE: mongodb
+      DBNAME: assma
+      DB_URI: ${DB_URI_DOCKER:?Configure the server-side shared-mongo URI}
+      ALLOWED_ORIGINS: ${ASSMA_WEB_URL:-https://assma.yappai.de},${ASSMA_ADMIN_URL:-https://assma-admin.yappai.de}
+    expose: ["4100"]
+    networks: [dev-proxy]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:4100/yappio/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    labels:
+      traefik.enable: "false"
+
+networks:
+  dev-proxy:
+    external: true

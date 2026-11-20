@@ -1,0 +1,27 @@
+http:
+  routers:
+    assma-web:
+      rule: "Host(`assma.yappai.de`)"
+      entryPoints: [web]
+      service: assma-web
+    assma-admin:
+      rule: "Host(`assma-admin.yappai.de`)"
+      entryPoints: [web]
+      service: assma-admin
+    assma-api:
+      rule: "Host(`assma-api.yappai.de`)"
+      entryPoints: [web]
+      service: assma-api
+  services:
+    assma-web:
+      loadBalancer:
+        servers:
+          - url: http://assma-web:80
+    assma-admin:
+      loadBalancer:
+        servers:
+          - url: http://assma-admin:80
+    assma-api:
+      loadBalancer:
+        servers:
+          - url: http://assma-api:4100

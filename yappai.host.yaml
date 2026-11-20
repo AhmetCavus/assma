@@ -1,0 +1,55 @@
+id: assma
+name: assma
+slug: assma
+type: app
+category: hosted-app
+description: Lokale Assistentin für die Projektakquise von Freelancern
+composeFile: docker/docker-compose.yml
+composeEnvFile: .env
+publicUrl: https://assma.yappai.de
+services:
+  - name: web
+    containerName: assma-web
+    port: 80
+    healthUrl: http://assma-web/health
+  - name: admin
+    containerName: assma-admin
+    port: 80
+    healthUrl: http://assma-admin/health
+  - name: api
+    containerName: assma-api
+    port: 4100
+    healthUrl: http://assma-api:4100/yappio/health
+healthChecks:
+  - label: Web
+    type: container
+    containerName: assma-web
+  - label: Administration
+    type: container
+    containerName: assma-admin
+  - label: API
+    type: http
+    url: http://assma-api:4100/yappio/health
+    expectedStatus: 200
+actions:
+  start: true
+  stop: true
+  restart: true
+  logs: true
+  delete: false
+yappio:
+  enabled: true
+  serverUrl: https://assma-api.yappai.de
+  managementUrl: http://assma-api:4100
+  admin:
+    enabled: true
+    mode: shared-admin
+  auth:
+    enabled: true
+    rootAccessSupported: true
+    rootResetSupported: false
+database:
+  type: mongodb
+  name: assma
+  connectionRef: shared-mongo
+tags: [assma, freelance, acquisition, yappio]

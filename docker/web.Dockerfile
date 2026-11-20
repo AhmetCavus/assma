@@ -1,0 +1,34 @@
+FROM node:22-alpine AS builder
+WORKDIR /app
+ARG NPM_REGISTRY=http://192.168.178.131:4873/
+RUN npm config set registry "$NPM_REGISTRY" && npm config set replace-registry-host always
+COPY package.json package-lock.json tsconfig.json .npmrc ./
+COPY shared/package.json shared/package.json
+COPY server/package.json server/package.json
+COPY web/package.json web/package.json
+COPY admin/package.json admin/package.json
+RUN npm ci --ignore-scripts --include=optional --no-audit --no-fund
+COPY shared shared
+COPY web web
+COPY admin admin
+ARG VITE_API_URL=https://assma-api.yappai.de
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build -w shared && npm run build -w web && npm run build -w admin
+
+FROM nginx:alpine AS runtime
+ARG VITE_API_URL=https://assma-api.yappai.de
+COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
+ENV ASSMA_API_ORIGIN=$VITE_API_URL
+# Only substitute our variable; nginx's own $uri etc. must stay untouched.
+ENV NGINX_ENVSUBST_FILTER=ASSMA_
+COPY --from=builder /app/web/dist /usr/share/nginx/html
+EXPOSE 80
+
+# The admin panel is its own site on its own host; it shares only the API.
+FROM nginx:alpine AS admin
+ARG VITE_API_URL=https://assma-api.yappai.de
+COPY docker/nginx.admin.conf /etc/nginx/templates/default.conf.template
+ENV ASSMA_API_ORIGIN=$VITE_API_URL
+ENV NGINX_ENVSUBST_FILTER=ASSMA_
+COPY --from=builder /app/admin/dist /usr/share/nginx/html
+EXPOSE 80
