@@ -48,8 +48,25 @@ multicast addresses in the socket's own DNS lookup, so a link cannot reach Mongo
 other containers. A schema.org JobPosting on the page is preferred over the page text. Pages
 that need a login or JavaScript report that the text should be pasted instead.
 
-The fit score, tailored CVs, applications, statistics and the assistant follow in later
-iterations.
+**Iteration 5** adds the **experience fit** (`/projects/<id>`) and the **tailored CV**
+(`/projects/<id>/cv`). The local model proposes, per required and preferred item, whether a
+reference confirms it, partly supports it or nothing does, with the supporting references
+(E01, …) and a one-sentence reason (about 30–60 seconds). The score itself is computed by
+fixed rules, as in the concept: required items weigh 2 points, preferred 1; confirmed earns
+the full weight, partial half, missing nothing; the result is scaled to 1–10 and a project
+without requirements stays unscored. Claims without a known reference count as missing. Each
+finding can be corrected by hand and the score is recomputed. The assessment stores a
+fingerprint of the requirements and references, so the page marks it as out of date after
+either changes. "Save and check fit" on the capture page opens the fit and starts the
+assessment. The register shows the score.
+
+The tailored CV starts from the profile summary and the references that support the fit,
+ordered by weight. The person edits the short profile, selects and orders references and
+saves the draft on the project. The preview, Markdown and PDF (pdf-lib, standard Helvetica,
+generated in the browser) render the same document; letters Helvetica lacks lose their
+accent (ş → s) or get a look-alike instead of breaking the export.
+
+Applications (email and portal), statistics and the assistant follow in later iterations.
 
 ## Structure
 
@@ -62,7 +79,8 @@ The npm workspaces follow [ellma](https://github.com/AhmetCavus/ellma):
   signed-in account under `/api/assma/account`. `experience/` serves the signed-in
   person's profile and references under `/api/assma/experience`, and the CV import jobs
   under `/api/assma/experience/import`; every query is scoped to the account.
-  `projects/` serves the project register and listing capture under `/api/assma/projects`.
+  `projects/` serves the project register, listing capture, fit assessment and CV draft
+  under `/api/assma/projects`.
   `platform/ollama.ts` is the model client, `platform/modelJobs.ts` the shared model queue
   and `platform/safeFetch.ts` the guarded fetch for listing links. `admin/` serves `/api/assma/admin`, for admin and root only. The boundary
   seals the account-security and experience collections from Yappio's generic collection

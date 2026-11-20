@@ -190,13 +190,18 @@ export function ProjectsPage({
                   <td data-label={text.columnTech}>{project.tech.slice(0, 3).join(" · ")}</td>
                   <td data-label={text.columnDate}>{date.format(new Date(project.createdAt))}</td>
                   <td data-label={text.columnFit}>
-                    <span title={text.fitPending}>–</span>
+                    {project.fit?.score ? (
+                      <strong className="fit-score">{project.fit.score}/10</strong>
+                    ) : (
+                      <span title={text.fitPending}>–</span>
+                    )}
                   </td>
                   <td className="row-actions">
                     <RowMenu
                       project={project}
                       preferences={preferences}
                       onOpen={() => navigate(`/projects/${project.id}`)}
+                      onEdit={() => navigate(`/projects/${project.id}/edit`)}
                       onStatus={(next) =>
                         void change(project, { status: next }, text.statusChanged)
                       }
@@ -224,6 +229,7 @@ function RowMenu({
   project,
   preferences,
   onOpen,
+  onEdit,
   onStatus,
   onArchive,
   onDelete,
@@ -231,6 +237,7 @@ function RowMenu({
   project: Project;
   preferences: Preferences;
   onOpen: () => void;
+  onEdit: () => void;
   onStatus: (status: ProjectStatus) => void;
   onArchive: () => void;
   onDelete: () => void;
@@ -291,6 +298,9 @@ function RowMenu({
         <div className="menu" role="menu" aria-label={text.actions(project.title)}>
           <button type="button" role="menuitem" onClick={act(onOpen)}>
             {text.open}
+          </button>
+          <button type="button" role="menuitem" onClick={act(onEdit)}>
+            {text.edit}
           </button>
           <p className="menu-label">{text.setStatus}</p>
           {PROJECT_STATUSES.map((option) => (

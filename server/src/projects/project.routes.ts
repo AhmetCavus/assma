@@ -3,6 +3,7 @@ import { z } from "zod";
 import { identifier } from "@assma/shared";
 import { accountOf } from "../platform/access.js";
 import { endpoint } from "../platform/endpoint.js";
+import * as fit from "./fit.service.js";
 import * as service from "./project.service.js";
 
 const jobId = z.string().uuid();
@@ -38,6 +39,51 @@ projectRoutes.delete(
   "/listing/suggest/:id",
   endpoint((request, response) =>
     service.cancelSuggestion(accountOf(response), jobId.parse(request.params.id)),
+  ),
+);
+
+// Experience fit and the tailored CV of one project.
+projectRoutes.post(
+  "/:id/fit",
+  endpoint((request, response) =>
+    fit.startAssessment(accountOf(response), identifier.parse(request.params.id)),
+  ),
+);
+projectRoutes.get(
+  "/:id/fit/:jobId",
+  endpoint((request, response) =>
+    fit.assessment(
+      accountOf(response),
+      identifier.parse(request.params.id),
+      jobId.parse(request.params.jobId),
+    ),
+  ),
+);
+projectRoutes.delete(
+  "/:id/fit/:jobId",
+  endpoint((request, response) =>
+    fit.cancelAssessment(
+      accountOf(response),
+      identifier.parse(request.params.id),
+      jobId.parse(request.params.jobId),
+    ),
+  ),
+);
+projectRoutes.put(
+  "/:id/fit/findings/:index",
+  endpoint((request, response) =>
+    fit.changeFinding(
+      accountOf(response),
+      identifier.parse(request.params.id),
+      z.coerce.number().int().min(0).max(100).parse(request.params.index),
+      request.body,
+    ),
+  ),
+);
+projectRoutes.put(
+  "/:id/cv",
+  endpoint((request, response) =>
+    fit.saveCv(accountOf(response), identifier.parse(request.params.id), request.body),
   ),
 );
 

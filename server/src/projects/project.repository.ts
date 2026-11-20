@@ -1,10 +1,10 @@
-import { projectSchema, type Project } from "@assma/shared";
+import { cvDraftSchema, fitSchema, projectSchema, type Project } from "@assma/shared";
 import ProjectModel, { type ProjectRecord } from "../models/project.model.js";
 
 type StoredProject = ProjectRecord & { _id: unknown };
 type ProjectFields = Omit<
   ProjectRecord,
-  "ownerId" | "status" | "archived" | "createdAt" | "updatedAt"
+  "ownerId" | "status" | "archived" | "fit" | "cv" | "createdAt" | "updatedAt"
 >;
 
 function toProject(record: StoredProject): Project {
@@ -24,6 +24,9 @@ function toProject(record: StoredProject): Project {
     terms: record.terms ?? "",
     status: record.status,
     archived: Boolean(record.archived),
+    // Stored data that no longer matches the contract is treated as absent, not as an error.
+    fit: fitSchema.safeParse(record.fit).success ? record.fit : null,
+    cv: cvDraftSchema.safeParse(record.cv).success ? record.cv : null,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   });

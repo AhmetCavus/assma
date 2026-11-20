@@ -29,6 +29,7 @@ import {
   type ProjectChange,
   type ProjectInput,
 } from "../projects.js";
+import { fitJobSchema, type CvDraftInput, type FindingChange } from "../fit.js";
 
 export const API_PREFIX = "/api/assma";
 
@@ -142,6 +143,26 @@ export class AssmaApi {
 
   cancelListingSuggestion(id: string) {
     return this.call("delete", `/projects/listing/suggest/${id}`, z.object({ id: z.string() }));
+  }
+
+  startFit(projectId: string) {
+    return this.call("post", `/projects/${projectId}/fit`, fitJobSchema);
+  }
+
+  fitJob(projectId: string, jobId: string) {
+    return this.call("get", `/projects/${projectId}/fit/${jobId}`, fitJobSchema);
+  }
+
+  cancelFit(projectId: string, jobId: string) {
+    return this.call("delete", `/projects/${projectId}/fit/${jobId}`, z.object({ id: z.string() }));
+  }
+
+  changeFinding(projectId: string, index: number, change: FindingChange) {
+    return this.call("put", `/projects/${projectId}/fit/findings/${index}`, projectSchema, change);
+  }
+
+  saveCv(projectId: string, draft: CvDraftInput) {
+    return this.call("put", `/projects/${projectId}/cv`, projectSchema, draft);
   }
 
   adminOverview() {

@@ -8,7 +8,9 @@ import { CvImportPage } from "./pages/CvImportPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ExperiencePage } from "./pages/ExperiencePage";
 import { LandingPage } from "./pages/LandingPage";
+import { ProjectCvPage } from "./pages/ProjectCvPage";
 import { ProjectEditorPage } from "./pages/ProjectEditorPage";
+import { ProjectFitPage } from "./pages/ProjectFitPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 
 const WORKSPACE_PATHS = [
@@ -18,14 +20,16 @@ const WORKSPACE_PATHS = [
   "/experience",
   "/experience/import",
 ];
-const PROJECT_PATH = /^\/projects\/([a-f0-9]{24})$/;
+const PROJECT_PATH = /^\/projects\/([a-f0-9]{24})(\/edit|\/cv)?$/;
 
 export default function App() {
   const preferences = usePreferences();
   const session = useSession(preferences.copy);
   const path = usePath();
   const signedIn = Boolean(session.profile);
-  const projectId = PROJECT_PATH.exec(path)?.[1] ?? null;
+  const projectMatch = PROJECT_PATH.exec(path);
+  const projectId = projectMatch?.[1] ?? null;
+  const projectView = projectMatch?.[2] ?? "";
   const inWorkspace = WORKSPACE_PATHS.includes(path) || projectId !== null;
   const onAuthPage = path === "/login" || path === "/signup";
 
@@ -42,8 +46,22 @@ export default function App() {
   if (inWorkspace && signedIn) {
     return (
       <Shell session={session} preferences={preferences} path={path}>
-        {projectId ? (
+        {projectId && projectView === "/edit" ? (
           <ProjectEditorPage
+            key={`${projectId}-edit`}
+            id={projectId}
+            session={session}
+            preferences={preferences}
+          />
+        ) : projectId && projectView === "/cv" ? (
+          <ProjectCvPage
+            key={`${projectId}-cv`}
+            id={projectId}
+            session={session}
+            preferences={preferences}
+          />
+        ) : projectId ? (
+          <ProjectFitPage
             key={projectId}
             id={projectId}
             session={session}

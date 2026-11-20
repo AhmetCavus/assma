@@ -12,7 +12,7 @@ import {
   type ProjectInput,
   type ProjectStatus,
 } from "@assma/shared";
-import { setFlash } from "../lib/flash";
+import { setAutoAssess, setFlash } from "../lib/flash";
 import type { Preferences } from "../lib/preferences";
 import { projectsChanged } from "../lib/projects";
 import { linkHandler, navigate } from "../lib/router";
@@ -318,10 +318,10 @@ export function ProjectEditorPage({
         setStatus(text.saved);
         projectsChanged();
       } else {
-        await api.createProject(parsed.data);
+        const created = await api.createProject(parsed.data);
         projectsChanged();
-        setFlash(text.saved);
-        navigate("/projects");
+        setAutoAssess(created.id);
+        navigate(`/projects/${created.id}`);
       }
     } catch (failure) {
       fail(failure);
@@ -389,8 +389,12 @@ export function ProjectEditorPage({
 
   return (
     <div className="page wide">
-      <a className="link back-link" href="/projects" onClick={linkHandler("/projects")}>
-        ← {text.toOverview}
+      <a
+        className="link back-link"
+        href={editing ? `/projects/${id}` : "/projects"}
+        onClick={linkHandler(editing ? `/projects/${id}` : "/projects")}
+      >
+        ← {editing ? copy.cv.back : text.toOverview}
       </a>
       <h1>{editing ? text.editTitle : text.title}</h1>
       <p className="lead">{text.lead}</p>
@@ -575,7 +579,7 @@ export function ProjectEditorPage({
         </div>
         <div className="form-actions page-actions">
           <button className="button" disabled={busy || reading}>
-            {busy ? copy.common.working : editing ? text.saveChanges : text.save}
+            {busy ? copy.common.working : editing ? text.saveChanges : text.saveAndAssess}
           </button>
           <a className="pill" href="/projects" onClick={linkHandler("/projects")}>
             {text.toOverview}

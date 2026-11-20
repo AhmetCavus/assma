@@ -88,7 +88,7 @@ export function Shell({
                 <a
                   href={`/projects/${project.id}`}
                   onClick={linkHandler(`/projects/${project.id}`)}
-                  className={path === `/projects/${project.id}` ? "active" : ""}
+                  className={path.startsWith(`/projects/${project.id}`) ? "active" : ""}
                   aria-current={path === `/projects/${project.id}` ? "page" : undefined}
                 >
                   <GrapeMark size={18} />

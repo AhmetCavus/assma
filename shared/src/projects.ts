@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { identifier } from "./account.js";
 import { uniqueSkills } from "./experience.js";
+import { cvDraftSchema, fitSchema } from "./fit.js";
 
 /**
  * Contracts for the project register: listings the freelancer captured, from a link, pasted
@@ -97,6 +98,10 @@ export const projectSchema = z.object({
   terms: z.string(),
   status: projectStatusSchema,
   archived: z.boolean(),
+  /** The latest experience assessment, or null before the first one. */
+  fit: fitSchema.nullable(),
+  /** The tailored CV draft, or null until the person saves one. */
+  cv: cvDraftSchema.nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

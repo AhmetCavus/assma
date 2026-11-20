@@ -17,6 +17,8 @@ export type ProjectRecord = {
   terms: string;
   status: string;
   archived: boolean;
+  fit: unknown;
+  cv: unknown;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -36,6 +38,8 @@ export default createCollection<ProjectRecord>("AssmaProject").withSchema({
   terms: { ...Provider.String, default: "" },
   status: { ...Provider.String, enum: [...PROJECT_STATUSES], default: "captured" },
   archived: { ...Provider.Boolean, default: false },
+  fit: { ...Provider.Mixed, default: null },
+  cv: { ...Provider.Mixed, default: null },
   createdAt: { ...Provider.Date, required: true },
   updatedAt: { ...Provider.Date, required: true },
 });

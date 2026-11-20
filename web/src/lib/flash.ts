@@ -20,3 +20,23 @@ export function takeFlash(): string {
   }
   return message;
 }
+
+/** A project saved with "save and check fit" is assessed when its fit page opens. */
+let autoAssess = "";
+
+export function setAutoAssess(projectId: string): void {
+  autoAssess = projectId;
+}
+
+/** True once for the project that was just saved; repeated initial calls see it too. */
+export function takeAutoAssess(projectId: string): boolean {
+  if (autoAssess !== projectId) {
+    return false;
+  }
+  queueMicrotask(() => {
+    if (autoAssess === projectId) {
+      autoAssess = "";
+    }
+  });
+  return true;
+}
