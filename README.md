@@ -1,228 +1,141 @@
-# assma
+# assma 🍇
 
-A local assistant for freelance project acquisition. The design and concept are in
-[`docs/`](docs/README.md) ([concept](docs/assma-Concept.md), [brand](docs/brand),
-[screens](docs/screens)).
+> **Status: Alpha.** assma is a working first version that is still being built step by step. Expect rough edges, breaking changes and data model changes without migration. Not meant for production use yet.
+
+**assma** is a personal assistant for freelancers who look for their next project. You paste a project listing; assma reads it, checks it against your own project experience, explains how well you fit, builds a CV tailored to that one project and keeps track of the application until you get an answer. It runs on an **open-weight model** (Qwen via Ollama) on our own server, so listings and CVs never go to a third-party AI provider.
+
+### Why grapes?
+
+The name comes from _asma_, the Turkish word for the **grapevine**. It is the sibling of [ellma](https://ellma.yappai.de), whose red apple (_kızıl elma_) is the goal on the horizon. assma's fruit grows differently:
+
+- **Your experience is the vine.** Every project you have done is part of it, and it grows a little every year. assma never invents experience; everything it says about you is traced back to a reference on that vine.
+- **Every new project is a cluster of grapes.** It starts small and green when you capture a listing, and it ripens as you check the fit, shape the CV and send the application.
+- **Grapes are picked when they are ripe.** A good application is not sent to everything at once. assma shows you which projects really fit, where evidence is missing and when it is time to follow up, so you pick the right ones at the right moment.
+
+The grape mark carries the same white four-point star as ellma's apple. On the landing page the grapes fill with colour as you scroll through the steps.
+
+## See it
 
 <p align="center">
-  <img src="web/public/tour/capture.gif" width="480" alt="A listing is pasted and assma fills in the project details">
-  <img src="web/public/tour/cv.gif" width="480" alt="The tailored CV switching between layouts, colour themes and photo frames">
+  <img src="web/public/tour/capture.gif" width="640" alt="A listing is pasted, assma reads it and fills in the project details">
 </p>
 
-The **landing page** explains the product with an animated demo, the three steps, a tour of
-four GIFs recorded in the app (`web/public/tour`: capture, fit, CV design, CV import, each
-with a still `.png` for visitors who prefer reduced motion), the privacy points, what comes
-next, and a footer with the data-use notice. A link or listing typed into its last field is
-carried through sign-up into the project editor (`web/src/lib/seed.ts`).
+<p align="center"><em>Paste a listing. assma reads it and fills in the client, contact, tech stack and requirements.</em><br><sub>All recordings come from the running app with a sample profile (Mara Linden, Android engineer).</sub></p>
 
-As in ellma, **data privacy** (`/privacy`), **terms** (`/terms`) and the **imprint**
-(`/imprint`) are open to everyone and linked from every footer, together with the cookie
-settings (assma only uses necessary browser storage and no tracking). The imprint's operator
-details are build settings: set `VITE_LEGAL_NAME`, `VITE_LEGAL_ADDRESS` (lines separated by
-`;`), `VITE_LEGAL_EMAIL` and optionally `VITE_LEGAL_REPRESENTATIVE`, `VITE_LEGAL_PHONE`,
-`VITE_LEGAL_REGISTER` and `VITE_LEGAL_VAT_ID` in `.env` before building the web image. Until
-name, address and email are set, the imprint says the details have not been entered yet.
+**The Dashboard is home.** It shows who to follow up with today, what is coming up, how many applications are open and what happened last.
 
-**Iteration 1** brings the application up on the existing Yappio infrastructure. It
-contains the landing page, sign-in and a minimal Dashboard, plus a role-protected admin
-shell. assma is registered with Yoster.
+![Dashboard with an overdue follow-up, two upcoming ones, four totals and the recent activity](docs/app/dashboard.png)
 
-**Iteration 2** adds the **Experience** page: personal details (name, role, location,
-email, summary) and project references (client, role, period, own contribution,
-technologies). They are stored per account in Yappio and later feed the fit assessment and
-the tailored CV.
+## How it works
 
-**Iteration 3** adds the **CV import** (`/experience/import`). The browser extracts the text
-of a PDF, Word (.docx) or text file (pdf.js and mammoth, loaded on demand), so the file never
-leaves the device; pasted text works too. The API queues the text as a background job and
-the shared Ollama container (`OLLAMA_MODEL`, default `qwen3.5:4b`, CPU) reads it into
-suggestions with a JSON schema. The page polls the job, shows progress and then the source
-next to the suggestions. Incomplete entries are flagged for editing, entries matching an
-existing reference start unchecked, and personal details only fill empty fields. Nothing is
-saved until the person applies the selection.
+**1. Bring your experience.** Drop in your existing CV as PDF or Word file, or paste its text. assma reads it part by part and suggests your profile, project references, languages, education and certificates. You decide what is kept. The file itself never leaves your browser; only its text is read on the server.
 
-CVs of up to 100,000 characters are read in parts of about 12,000 characters (split at
-paragraph breaks, with a small overlap) and the parts' suggestions are merged, so the prompt
-always fits the model context. The page shows the part being read and an estimated duration.
-On the shared CPU, reading runs at about 55 tokens/s and writing takes 10–12 seconds per
-position: a short CV needs 1–2 minutes, 30,000 characters about 5–10 minutes. Jobs run one at
-a time in memory, may take up to 15 minutes per part, are abandoned after 10 minutes without
-a poll (browsers slow background tabs to about one request per minute) and expire 30 minutes
-after they finish.
+![A CV is imported and its profile and project references are reviewed](web/public/tour/import.gif)
 
-**Iteration 4** adds the **project register** (`/projects`): Active and Archive tabs, search
-over title, end client and agency, status filters (captured, applied, in review, interview,
-closed), a row menu for status, archive and delete, and the newest active projects in the
-sidebar. A project is captured (`/projects/new`) from a link or listing text, where the local
-model suggests title, end client, agency, contact, tech stack, required and preferred
-experience and the working terms (about 30 seconds for a typical listing), or entered
-manually. Suggestions only fill empty fields, and the original link and listing text are
-kept as the source. Listing suggestions share the model queue with the CV import, so the CPU
-runs one model task at a time.
+**2. Capture a project.** Paste a link or the listing text. The local model suggests title, end client, agency, contact, tech stack, required and preferred experience and the working terms. It only fills the fields you left empty, and the original listing is kept as the source.
 
-"Load from link" fetches public pages only (`platform/safeFetch.ts`): http and https on
-default ports, at most three redirects, 2 MB and 10 seconds, and every connection (each
-redirect included) refuses private, loopback, link-local, shared, documentation and
-multicast addresses in the socket's own DNS lookup, so a link cannot reach MongoDB, Ollama or
-other containers. A schema.org JobPosting on the page is preferred over the page text. Pages
-that need a login or JavaScript report that the text should be pasted instead.
+**3. Check the fit.** Every requirement is checked against your references: _confirmed_, _partly supported_ or _missing_, each with the references that back it up and a one-sentence reason. The score from 1 to 10 follows fixed, visible rules (required items count double). If assma got something wrong, change the finding and the score follows.
 
-**Iteration 5** adds the **experience fit** (`/projects/<id>`) and the **tailored CV**
-(`/projects/<id>/cv`). The local model proposes, per required and preferred item, whether a
-reference confirms it, partly supports it or nothing does, with the supporting references
-(E01, …) and a one-sentence reason (about 30–60 seconds). The score itself is computed by
-fixed rules, as in the concept: required items weigh 2 points, preferred 1; confirmed earns
-the full weight, partial half, missing nothing; the result is scaled to 1–10 and a project
-without requirements stays unscored. Claims without a known reference count as missing. Each
-finding can be corrected by hand and the score is recomputed. The assessment stores a
-fingerprint of the requirements and references, so the page marks it as out of date after
-either changes. "Save and check fit" on the capture page opens the fit and starts the
-assessment. The register shows the score.
+![The experience fit: a score out of 10 and one finding per requirement with its supporting references](web/public/tour/fit.gif)
 
-The tailored CV starts from the profile summary and the references that support the fit,
-ordered by weight. The person picks a photo, edits the short profile, chooses the skills of
-the matrix and selects and orders references, and saves the draft on the project.
+**4. Tailor the CV.** assma starts the CV with the references that support this project, in the order that matters most. You choose the photo, the short profile, the skills and the references. The **skill matrix** counts real years per technology from your project periods (overlapping projects count once). Pick German or English, one of six colour themes, five layouts and five photo frames, then export a PDF or Markdown, built in your browser.
 
-The Experience page holds what a full CV needs: contact details (address, phone, email,
-website), languages with their level (native, C2–A1), education, certificates, hobbies and
-up to six profile photos. Photos are cropped to a
-square JPEG in the browser and stored privately (`AssmaProfileImage`); the CV import also
-reads phone, address, website, languages (levels such as "Muttersprache" or "fluent" map to
-CEFR), education, certificates and hobbies.
+![The tailored CV switching between layouts, colour themes and photo frames](web/public/tour/cv.gif)
 
-The **skill matrix** is computed from the project references (`shared/src/skills.ts`): years
-per technology and per role are the union of the project periods, so overlapping projects
-count once, plus the number of projects and the year last used; the total experience is the
-union of all periods. Skills the project asks for come first.
+**5. Apply and follow up.** By **email**, assma writes a first message in the CV's language (greeting, your confirmed strengths, your signature) and hands you a ready **`.eml` draft** with the PDF attached. Open it in Outlook, Thunderbird or Apple Mail and send it from your own address. By **portal**, you note where you applied and whether you uploaded the CV. Once recorded, assma **freezes** what you sent: the listing, the fit, your profile, the references and the exact PDF. Later edits never change it. Then you plan the follow-up and log replies and status changes.
 
-Each CV draft has its own **language** (German or English, for headings, dates and units,
-independent of the interface) and **design** (`shared/src/cvDesign.ts`): six colour themes
-(Aubergine, Ocean, Forest, Graphite, Bordeaux, Sand), five layouts (sidebar left, the
-original and default; sidebar right; header band; classic with a skill table and dates on
-the left; modern with a two-column skill grid) and five photo frames (circle, rounded,
-square, hexagon, double ring). Frames are drawn on a canvas as a transparent PNG, so the
-preview and the PDF show the same image.
+![Apply opens a prefilled email, downloads the .eml draft, records it as sent and plans a follow-up in a week](docs/app/apply.gif)
 
-The preview, the Markdown and the PDF render the same document. The PDF (pdf-lib, generated
-in the browser) has a dark sidebar with the round photo, contact, skill matrix with bars,
-certificates and hobbies beside the main column with name, role, experience, profile, roles
-with years and the project history as a timeline with technology tags; both columns flow
-onto further pages, with page numbers. Inter (`inter-font`) is embedded whole with
-contextual alternates off: fontkit's subsetting drops Inter glyphs, and the alternates have
-other widths than pdf-lib measures. A CV PDF is about 0.6 MB.
+### The pages
 
-Applications (email and portal), statistics and the assistant follow in later iterations.
+| Projects: every listing with status and fit                                                         | A project: the fit, requirement by requirement                                                 |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| ![Project register with status, tech stack, date and fit score](docs/app/projects.png)              | ![Fit page with a score of 9 out of 10, strengths, open points and evidence](docs/app/fit.png) |
+| **The CV: content, design and live preview**                                                        | **An application: status, follow-up and what was sent**                                        |
+| ![CV editor with language, colour theme, layout, photo frame and the preview](docs/app/cv.png)      | ![Application page with status, follow-up date and the frozen email](docs/app/application.png) |
+| **Apply: the email, ready to send**                                                                 | **Experience: your profile and project references**                                            |
+| ![Apply page with recipient, subject, message and the CV that will be attached](docs/app/apply.png) | ![Experience page with project references and personal details](docs/app/experience.png)       |
 
-**Iteration 6** adds **applications** and a working **Dashboard**. From a project's fit page
-(or "Apply with this CV" on the CV page), `/projects/<id>/apply` prepares the application:
+<p align="center"><em>On a phone:</em></p>
 
-- **By email:** recipient, subject and a first message in the CV's language (greeting, the
-  confirmed requirements as strengths, a signature from the profile). assma builds the CV PDF
-  and a ready-to-send **`.eml` draft** with the PDF attached (`X-Unsent: 1`, so Outlook opens
-  it as a draft; Thunderbird and Apple Mail open it too). The email leaves from the person's
-  own mail app and address; assma stores no mail credentials. A mailto link is the fallback
-  for web mail (without attachment; the PDF is downloaded alongside).
-- **Through a portal:** portal, submission time, a note, and whether the CV was uploaded. A
-  record may state explicitly that no CV was uploaded.
+![Dashboard, an application and the project register on a phone](docs/app/mobile.png)
 
-Recording the application (`POST /applications`) **freezes** the listing, the fit, the profile,
-the references (selected and all, for the matrix years), the CV choices with the photo, and
-keeps the **exact PDF** that was sent (separate sealed collection, up to 3 MB). Later edits
-change future drafts only. A captured project moves to "applied". The application page
-(`/applications/<id>`) sets the project's status, plans a **follow-up** date with a note, keeps
-an **activity** log (notes, replies, status and follow-up changes), and offers the original PDF,
-a fresh PDF or Markdown from the frozen copy. Deleting a project deletes its applications.
+<p align="center"><em>In English, and in the dark:</em></p>
 
-The **Dashboard** shows follow-ups that are due or overdue, those coming up in the next two
-weeks, totals (applications, this month, open, projects interviewing) and recent activity.
-Progress (week and month comparison, channels) follows next.
+| ![Dashboard in English and the dark theme](docs/app/dashboard-dark-en.png) | ![Fit page in English and the dark theme](docs/app/fit-dark-en.png) |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 
-Yappio parses every JSON body first with a 100 kB limit; that parser now steps aside for
-`/api/assma/*`, whose routes parse their own bodies after the session check with per-route
-limits (64 kB by default, 512 kB for CV text, captures and photos, 4.5 MB for an application
-with its PDF). Before, a CV text over about 100 kB was refused despite the 100,000-character
-limit.
+The landing page ([assma.yappai.de](https://assma.yappai.de)) has a scripted live demo, a tour of four recordings (`web/public/tour`, each with a still `.png` for visitors who prefer reduced motion) and a field where you can paste your first listing; it is carried through sign-up into the project editor.
 
-## Structure
+![assma landing page: "Your experience. Your next project." with the live demo](docs/app/landing.png)
 
-The npm workspaces follow [ellma](https://github.com/AhmetCavus/ellma):
+## Background
 
-- `shared/`: contracts (zod), EN/DE copy and the `AssmaApi` client over `yappio-client`.
-- `server/`: Yappio 1.3.1 bootstrap. `platform/` holds the CORS and platform boundary,
-  the session and role gate (`requireAccount`), attempt limits and `yappio.ts` (the only
-  file that reaches into Yappio's unexported services). `account/` serves sign-in and the
-  signed-in account under `/api/assma/account`. `experience/` serves the signed-in
-  person's profile and references under `/api/assma/experience`, and the CV import jobs
-  under `/api/assma/experience/import`; every query is scoped to the account.
-  `projects/` serves the project register, listing capture, fit assessment and CV draft
-  under `/api/assma/projects`.
-  `platform/ollama.ts` is the model client, `platform/modelJobs.ts` the shared model queue
-  and `platform/safeFetch.ts` the guarded fetch for listing links. `admin/` serves `/api/assma/admin`, for admin and root only. The boundary
-  seals the account-security and experience collections from Yappio's generic collection
-  API, so not even admins read that content there.
-- `web/`: React landing page (grape logo, light and dark theme, language, GitHub link),
-  sign-in and sign-up, and the workspace with Dashboard as the first navigation item,
-  followed by Experience.
-- `admin/`: separate React admin shell. It accepts only admin and root accounts, and
-  the API checks the role again on every request.
-- `docker/`: Compose stack, Dockerfiles, nginx, the Traefik file route, environment
-  setup and infrastructure verification.
+Finding freelance projects is repetitive work: read a listing, decide whether it fits, pick the right projects from your history, adjust the CV, write the email, remember to follow up. assma does the reading and the bookkeeping and leaves the decisions to you. Nothing is sent on your behalf.
 
-## Install
+Like ellma, assma is also a test project for two things under real conditions:
 
-Requires Node.js 22 or later, Docker, the shared `ollama` container on `dev-proxy` with
-`qwen3.5:4b` installed (for the CV import), and access to the internal Verdaccio registry
-(`http://192.168.178.131:4873/`, set in `.npmrc`). The registry serves `yappio@1.3.1`
-and `yappio-client@1.0.1` and proxies the public registry.
+- **The yappai infrastructure**: building on [Yappio](#built-on-yappio), hosting through [Yoster](#host-with-yoster), routing via Traefik, and sharing services (`shared-mongo`, `ollama`) between apps.
+- **Open-weight models in local operation**: reading listings and CVs and assessing the fit with a small model on our own CPU-only hardware, and finding out how far that gets compared to hosted models.
+
+The original design and concept are in [`docs/`](docs/README.md) ([concept](docs/assma-Concept.md), [interactive design](docs/assma-Landingpage.html), [brand](docs/brand)).
+
+## What it does
+
+| Area             | Features                                                                                                                                                                                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dashboard**    | Follow-ups due today or overdue, those in the next two weeks, totals (applications, this month, open, in interview) and the latest activity.                                                                                                                                                            |
+| **Experience**   | Profile with contact details, summary, languages (native, C2–A1), education, certificates, hobbies and up to six photos. Project references with client, role, period, your own contribution and technologies. CV import from PDF, Word or text, read in parts so even long CVs fit the model.          |
+| **Projects**     | Active and archive tabs, search, status filters (captured, applied, in review, interview, closed). Capture from a link (public pages only) or pasted text, or enter by hand. Your newest projects stay in the sidebar.                                                                                  |
+| **Fit**          | One finding per requirement with its evidence and reason, a score from fixed rules, manual corrections, and a hint when the listing or your references changed since the last check.                                                                                                                    |
+| **Tailored CV**  | References chosen and ordered by fit, a skill matrix in years, CV language independent of the interface, six themes, five layouts, five photo frames. Preview, PDF and Markdown show the same document.                                                                                                 |
+| **Applications** | Email (`.eml` draft with the PDF attached, or a mailto link for web mail) or portal. A frozen copy of everything that was sent, including the original PDF. Status, follow-up date with a note, and a timeline of notes, replies and changes. A fresh PDF or Markdown from the frozen copy at any time. |
+| **Everywhere**   | German and English, light and dark, phone layout, and a footer with privacy notice, terms, cookie settings and imprint.                                                                                                                                                                                 |
+
+**Coming next:** Progress (weeks and months compared, email versus portal, companies, interviews) and an assistant you can ask about your projects.
+
+### Your data
+
+- **A model on this server.** Listings and CVs are read by an open-weight model running next to assma. No outside AI service sees them.
+- **Your own installation.** Profile, references, photos, projects and applications live in this installation's database, each account sees only its own data, and these collections are sealed from Yappio's generic API, even for admins.
+- **Built in your browser.** CV files you import are turned into text in the browser; PDFs, Markdown and email drafts are created there too.
+- **Your own mail app.** assma stores no mail passwords and sends nothing. You send the email yourself.
+- **No tracking.** assma sets no cookies; it only keeps what the app needs (sign-in, language, theme) in the browser's storage.
+
+### Accounts, admin and legal pages
+
+- **Sign-in** goes through assma's own endpoint (`/api/assma/account/login`), which limits attempts.
+- **Admin panel**: a separate site (`admin/`, `https://assma-admin.yappai.de`) for `admin` and `root` accounts. It shows account totals only, never profiles, projects or applications. The first administrator signs in with the name **`admin`** (not an email address) and `INITIAL_ADMIN_PASS` from `.env`.
+- **Legal pages**: privacy (`/privacy`), terms (`/terms`) and imprint (`/imprint`) are open to everyone and linked from every footer. The texts live in `shared/src/locales` (`legal`) in English and German. The operator details come from `VITE_LEGAL_*` in `.env` (see `.env.example`) and are built into the web app; until name, address and email are set, the imprint says the details are missing.
+
+## Built on Yappio
+
+**Yappio** is yappai's own backend framework for Node.js (private npm packages from our Verdaccio registry). It brings accounts with JWT sessions and roles, collections declared in a few lines on top of Mongoose, a health endpoint and an initial admin account, so assma only writes its own domain logic.
+
+assma adds its routes under `/api/assma` (account, experience, projects, applications, admin) and puts a boundary in front of Yappio's generic collection API: only admins reach it, and assma's content collections are sealed there completely. Yappio parses every JSON body with a 100 kB limit; that parser steps aside for `/api/assma/*`, where each route reads its own body after the session check with a fitting limit (64 kB by default, 512 kB for CV text and photos, 4.5 MB for an application with its PDF).
+
+## Stack
+
+- **Yappio** (`yappio@1.3.1`, `yappio-client@1.0.1` from Verdaccio).
+- **Server**: Express via Yappio, Mongoose collections on `shared-mongo` / database `assma`.
+- **Model**: Ollama `qwen3.5:4b` (configurable `OLLAMA_MODEL`), one model task at a time through a shared queue, answers checked against a JSON schema.
+- **Web**: React 18 + Vite, no UI framework. pdf.js and mammoth read imported CVs, pdf-lib with the embedded Inter font writes the CV PDF.
+- **Admin**: a second small React + Vite app (`admin/`) on its own host.
+- **Shared**: zod contracts, the EN/DE copy and the typed API client, used by server, web and admin.
+
+The code is split into npm workspaces as in [ellma](https://github.com/AhmetCavus/ellma): `shared/`, `server/`, `web/`, `admin/` and `docker/`.
+
+## Develop
+
+Requires Node.js 22 or later, Docker, the shared `ollama` container with `qwen3.5:4b`, and access to the internal Verdaccio registry (set in `.npmrc`).
 
 ```bash
 npm install
+npm run setup:environment        # or: cp .env.example .env
+npm run dev                      # API :4100 + web :5182 + admin :5183
 ```
 
-## Configure
-
-```bash
-npm run setup:environment
-```
-
-The setup:
-
-- reads the shared-mongo administrator from `../infra/mongo/.env.mongo`;
-- creates the database user `assma_…` with `readWrite` on the logical database
-  `assma` (or verifies the existing one);
-- writes `.env` with mode 0600;
-- copies `docker/traefik.yml` to `../infra/traefik/dynamic/assma.yml`.
-
-Running it again keeps the existing database credentials, `JWT_SECRET` and initial admin
-password. `.env` is ignored by Git. `.env.example` lists every setting with placeholders.
-
-The initial administrator signs in with the address **`admin`**, not
-`INITIAL_ADMIN_USER`, and with `INITIAL_ADMIN_PASS` from `.env`. Yappio stores that
-account with email `admin` and puts `INITIAL_ADMIN_USER` into its name.
-
-## Run
-
-The containers `assma-web`, `assma-admin` and `assma-api` (port 4100) join the existing
-`dev-proxy` network and use `shared-mongo`. The shared Traefik routes them through its
-file provider:
-
-| Host                    | Container        |
-| ----------------------- | ---------------- |
-| `assma.yappai.de`       | `assma-web:80`   |
-| `assma-admin.yappai.de` | `assma-admin:80` |
-| `assma-api.yappai.de`   | `assma-api:4100` |
-
-Start, stop and restart the stack from Yoster, or run it directly:
-
-```bash
-docker compose --env-file .env -f docker/docker-compose.yml up -d --build
-```
-
-For local development, run the API on 4100, the web app on 5182 and the admin shell on 5183. ellma uses 4000, 5180 and 5181, so both run side by side:
-
-```bash
-npm run dev
-```
+The ports differ from ellma's (4000, 5180, 5181), so both run side by side.
 
 ## Verify
 
@@ -233,35 +146,34 @@ npm run build                  # production builds
 npm run verify:infrastructure  # Compose, routing, manifest and Yoster discovery
 ```
 
-`verify:infrastructure` checks that Compose, `docker/traefik.yml` and
-`yappai.host.yaml` agree on:
+`verify:infrastructure` checks that Compose, `docker/traefik.yml` and `yappai.host.yaml` agree on container names, ports, health checks and the database, and then runs Yoster's real discovery against the manifest, so a broken manifest shows up before deployment.
 
-- the container names, ports and health checks;
-- the Yappio management URL;
-- the `shared-mongo` database reference.
+## Host with Yoster
 
-It then validates Compose with `.env.example` in a temporary hosting root and runs
-Yoster's real `HostingManifestDiscoveryService` there. That must yield exactly one
-`assma` entry with the services `web`, `admin` and `api`. When `.env` exists, it also
-discovers assma from the real hosting root (`YAPPAI_HOST_ROOT`, default `..`). Yoster
-needs `.env` as the manifest's `composeEnvFile`. Without it, assma is not listed.
+**Yoster** (repository `yappai-host`) is yappai's hosting manager. Apps live side by side in one hosting root and share one set of infrastructure: `shared-mongo` (one database and one user per app), `ollama`, Traefik on the `dev-proxy` network and a Cloudflare tunnel for the `*.yappai.de` domains. Yoster finds each app through its `yappai.host.yaml` and starts and stops its Compose stack.
 
-Smoke check on the running stack, through the shared Traefik:
+| Host                    | Container        |
+| ----------------------- | ---------------- |
+| `assma.yappai.de`       | `assma-web:80`   |
+| `assma-admin.yappai.de` | `assma-admin:80` |
+| `assma-api.yappai.de`   | `assma-api:4100` |
+
+Steps:
+
+1. `npm run setup:environment`: creates the `assma` database user on shared-mongo (or keeps the existing one), writes `.env` (0600) with generated secrets, and installs `infra/traefik/dynamic/assma.yml`. Running it again keeps credentials, `JWT_SECRET` and the admin password.
+2. Fill the `VITE_LEGAL_*` operator details in `.env` for the imprint.
+3. `npm run verify:infrastructure`, then start **assma** from Yoster, or by hand:
 
 ```bash
-curl -H 'Host: assma-api.yappai.de' http://127.0.0.1/yappio/health
+docker compose --env-file .env -f docker/docker-compose.yml up -d --build
+curl -H 'Host: assma-api.yappai.de' http://127.0.0.1/yappio/health   # smoke check
 ```
 
-## Yoster registration
+Yoster lists assma once `.env` exists.
 
-`yappai.host.yaml` registers id and slug `assma`:
+## Notes
 
-- **Compose:** `docker/docker-compose.yml` with `.env`.
-- **Services:** `web`, `admin` and `api`, with their health checks.
-- **Yappio:** management URL `http://assma-api:4100`.
-- **Database:** `mongodb` / `assma` on `shared-mongo`.
-
-Yoster scans its hosting root (`/srv/yappai/hosting`) and lists assma once `.env` exists.
-
-The Cloudflare tunnel sends `assma.yappai.de`, `assma-admin.yappai.de` and
-`assma-api.yappai.de` to the shared Traefik, as for ellma.
+- **Speed**: on this CPU-only host, capturing a listing takes about 30 seconds and a fit check 30–60 seconds. A short CV imports in 1–2 minutes, a long one (30,000 characters) in 5–10 minutes. A CV PDF is about 0.6 MB.
+- **One model task at a time**: CV imports, listing captures and fit checks share one queue, so the CPU is never overloaded.
+- **Links**: "Load from link" fetches public pages only and refuses private and internal addresses, so a link cannot reach the database or other containers. Pages that need a login or JavaScript ask you to paste the text instead.
+- **Registration is open**. Sign-in attempts are limited in the API; registration is not, so consider rate limiting at Traefik before going public.
