@@ -5,13 +5,14 @@ import {
   estimateCvSeconds,
   formatPeriod,
   isKnownReference,
+  profileFill,
   referenceInputSchema,
   suggestionInput,
   toApiError,
   type CvImportJob,
   type Experience,
   type ExperienceProfile,
-  type ProfileInput,
+  type CvSuggestions,
   type ReferenceSuggestion,
 } from "@assma/shared";
 import { extractCvText, ExtractionError } from "../lib/cvText";
@@ -25,7 +26,20 @@ type Step = "choose" | "extracting" | "reading" | "review";
 type Reviewed = ReferenceSuggestion & { key: number; selected: boolean; known: boolean };
 
 const JOB_KEY = "assma.cvImport";
-const PROFILE_FIELDS = ["name", "headline", "location", "email", "summary"] as const;
+const PROFILE_FIELDS = [
+  "name",
+  "headline",
+  "location",
+  "address",
+  "phone",
+  "email",
+  "website",
+  "summary",
+  "certificates",
+  "hobbies",
+] as const;
+
+type ProfileSuggestion = CvSuggestions["profile"];
 
 // The running job survives a reload in this tab; storage may be unavailable.
 function remember(value: { id: string; text: string } | null): void {
@@ -62,18 +76,6 @@ function remembered(): { id: string; text: string } | null {
 const valid = (suggestion: ReferenceSuggestion) =>
   referenceInputSchema.safeParse(suggestionInput(suggestion)).success;
 
-/** Profile fields the import would fill: only those still empty in the saved profile. */
-function profileFill(suggested: ProfileInput, saved: ExperienceProfile): Partial<ProfileInput> {
-  const fill: Partial<ProfileInput> = {};
-  for (const field of PROFILE_FIELDS) {
-    const value = suggested[field];
-    if (value && (saved.updatedAt === null || !saved[field])) {
-      fill[field] = value;
-    }
-  }
-  return fill;
-}
-
 export function CvImportPage({
   session,
   preferences,
@@ -91,7 +93,7 @@ export function CvImportPage({
   const [pasted, setPasted] = useState("");
   const [job, setJob] = useState<CvImportJob | null>(null);
   const [suggestions, setSuggestions] = useState<Reviewed[]>([]);
-  const [profile, setProfile] = useState<Partial<ProfileInput>>({});
+  const [profile, setProfile] = useState<Partial<ProfileSuggestion>>({});
   const [useProfile, setUseProfile] = useState(true);
   const [editing, setEditing] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -196,7 +198,11 @@ export function CvImportPage({
         return { ...suggestion, key, known, selected: !known && valid(suggestion) };
       }),
     );
-    const fill = profileFill(finished.suggestions!.profile, current.profile);
+    // An unsaved profile is only the account's draft: everything the CV states may fill it.
+    const fill = profileFill(
+      current.profile.updatedAt === null ? null : current.profile,
+      finished.suggestions!.profile,
+    );
     setProfile(fill);
     setUseProfile(Object.keys(fill).length > 0);
     setStep("review");
@@ -319,11 +325,28 @@ export function CvImportPage({
                     <span>
                       <strong>{text.profileSuggestion}</strong>
                       <span className="muted small">{text.profileFillHint}</span>
-                      {PROFILE_FIELDS.filter((field) => profile[field]).map((field) => (
-                        <span key={field} className="suggestion-detail">
-                          {copy.experience[field]}: {profile[field]}
-                        </span>
-                      ))}
+                      {PROFILE_FIELDS.filter((field) => profile[field] !== undefined).map(
+                        (field) => {
+                          const value = profile[field]!;
+                          const shown =
+                            field === "certificates"
+                              ? profile
+                                  .certificates!.map((certificate) => certificate.name)
+                                  .join(", ")
+                              : Array.isArray(value)
+                                ? value.join(", ")
+                                : value;
+                          const label =
+                            field === "certificates"
+                              ? copy.experience.certificatesTitle
+                              : copy.experience[field];
+                          return (
+                            <span key={field} className="suggestion-detail">
+                              {label}: {shown}
+                            </span>
+                          );
+                        },
+                      )}
                     </span>
                   </label>
                 ) : (

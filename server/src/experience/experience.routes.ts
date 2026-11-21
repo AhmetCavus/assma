@@ -36,6 +36,18 @@ experienceRoutes.delete(
   ),
 );
 
+// Profile photos.
+experienceRoutes.post(
+  "/images",
+  endpoint((request, response) => service.uploadImage(accountOf(response), request.body)),
+);
+experienceRoutes.delete(
+  "/images/:id",
+  endpoint((request, response) =>
+    service.deleteImage(accountOf(response), identifier.parse(request.params.id)),
+  ),
+);
+
 // CV import: the browser sends extracted text; the model reads it in a background job.
 experienceRoutes.get(
   "/import/status",

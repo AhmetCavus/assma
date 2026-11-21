@@ -5,6 +5,7 @@ import {
   referenceInputSchema,
   uniqueSkills,
   yearMonthSchema,
+  type Certificate,
   type ExperienceReference,
   type ReferenceInput,
   type YearMonth,
@@ -169,7 +170,12 @@ const rawSuggestions = z
         headline: z.unknown(),
         location: z.unknown(),
         email: z.unknown(),
+        phone: z.unknown(),
+        address: z.unknown(),
+        website: z.unknown(),
         summary: z.unknown(),
+        certificates: z.unknown(),
+        hobbies: z.unknown(),
       })
       .partial()
       .default({}),
@@ -227,10 +233,60 @@ export function normaliseSuggestions(raw: unknown): CvSuggestions {
       headline: clip(profile.headline, EXPERIENCE_LIMITS.headline),
       location: clip(profile.location, EXPERIENCE_LIMITS.location),
       email: profileInputSchema.shape.email.safeParse(email).success ? email : "",
+      phone: valid(profileInputSchema.shape.phone, clip(profile.phone, EXPERIENCE_LIMITS.phone)),
+      address: clip(profile.address, EXPERIENCE_LIMITS.address),
+      website: valid(
+        profileInputSchema.shape.website,
+        clip(profile.website, EXPERIENCE_LIMITS.website),
+      ),
       summary: clip(profile.summary, EXPERIENCE_LIMITS.summary),
+      certificates: readCertificates(profile.certificates),
+      hobbies: Array.isArray(profile.hobbies)
+        ? uniqueSkills(
+            profile.hobbies
+              .filter((hobby): hobby is string => typeof hobby === "string")
+              .map((hobby) => clip(hobby, EXPERIENCE_LIMITS.hobby)),
+          ).slice(0, EXPERIENCE_LIMITS.hobbies)
+        : [],
     },
     references,
   };
+}
+
+/** The value if the schema accepts it as it is, otherwise "". */
+function valid(schema: z.ZodTypeAny, value: string): string {
+  const result = schema.safeParse(value);
+  return result.success && typeof result.data === "string" ? result.data : "";
+}
+
+function readCertificates(value: unknown): Certificate[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const certificates: Certificate[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    const record = (typeof item === "string" ? { name: item } : item) as Record<
+      string,
+      unknown
+    > | null;
+    const name = clip(record?.name, EXPERIENCE_LIMITS.certificate);
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    const year = clip(record?.year, 4);
+    certificates.push({
+      name,
+      issuer: clip(record?.issuer, EXPERIENCE_LIMITS.certificate),
+      year: /^(19[5-9]\d|20\d\d)$/.test(year) ? year : "",
+    });
+    if (certificates.length >= EXPERIENCE_LIMITS.certificates) {
+      break;
+    }
+  }
+  return certificates;
 }
 
 /** The reference a suggestion would create, ready for `referenceInputSchema`. */
@@ -321,13 +377,45 @@ function sameReference(a: ReferenceSuggestion, b: ReferenceSuggestion): boolean 
 }
 
 /** Merges the suggestions of several parts; a position seen twice keeps the fuller details. */
+const TEXT_FIELDS = [
+  "name",
+  "headline",
+  "location",
+  "email",
+  "phone",
+  "address",
+  "website",
+  "summary",
+] as const;
+
 export function mergeSuggestions(list: readonly CvSuggestions[]): CvSuggestions {
-  const profile = { name: "", headline: "", location: "", email: "", summary: "" };
-  const references: ReferenceSuggestion[] = [];
+  const profile: CvSuggestions["profile"] = {
+    name: "",
+    headline: "",
+    location: "",
+    email: "",
+    phone: "",
+    address: "",
+    website: "",
+    summary: "",
+    certificates: [],
+    hobbies: [],
+  };
   for (const suggestions of list) {
-    for (const field of Object.keys(profile) as (keyof typeof profile)[]) {
+    for (const field of TEXT_FIELDS) {
       profile[field] ||= suggestions.profile[field];
     }
+    profile.certificates = readCertificates([
+      ...profile.certificates,
+      ...suggestions.profile.certificates,
+    ]);
+    profile.hobbies = uniqueSkills([...profile.hobbies, ...suggestions.profile.hobbies]).slice(
+      0,
+      EXPERIENCE_LIMITS.hobbies,
+    );
+  }
+  const references: ReferenceSuggestion[] = [];
+  for (const suggestions of list) {
     for (const reference of suggestions.references) {
       const index = references.findIndex((existing) => sameReference(existing, reference));
       if (index < 0) {
@@ -369,4 +457,26 @@ export function estimateCvSeconds(characters: number): { min: number; max: numbe
     min: Math.round(fixed + (characters / 2500) * 11),
     max: Math.round(fixed + (characters / 900) * 11),
   };
+}
+
+const isEmpty = (value: unknown) =>
+  value === undefined ||
+  value === null ||
+  value === "" ||
+  (Array.isArray(value) && value.length === 0);
+
+/**
+ * The profile fields an import would fill: those the CV states and the saved profile still
+ * leaves empty. With no saved profile, everything the CV states.
+ */
+export function profileFill(
+  saved: Partial<Record<keyof CvSuggestions["profile"], unknown>> | null,
+  incoming: CvSuggestions["profile"],
+): Partial<CvSuggestions["profile"]> {
+  return Object.fromEntries(
+    Object.entries(incoming).filter(
+      ([field, value]) =>
+        !isEmpty(value) && (saved === null || isEmpty(saved[field as keyof typeof incoming])),
+    ),
+  ) as Partial<CvSuggestions["profile"]>;
 }

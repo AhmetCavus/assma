@@ -12,6 +12,16 @@ export const EXPERIENCE_LIMITS = {
   location: 80,
   email: 254,
   summary: 800,
+  phone: 40,
+  address: 200,
+  website: 200,
+  certificate: 120,
+  certificates: 30,
+  hobby: 60,
+  hobbies: 20,
+  images: 6,
+  /** A square JPEG, resized in the browser; base64 makes it about a third larger. */
+  imageBytes: 600 * 1024,
   organization: 120,
   role: 120,
   contribution: 1500,
@@ -29,12 +39,47 @@ export const yearMonthSchema = z
   .regex(/^(19[5-9]\d|20\d\d)-(0[1-9]|1[0-2])$/, "invalid_month");
 export type YearMonth = z.infer<typeof yearMonthSchema>;
 
+export const certificateSchema = z.object({
+  name: required(EXPERIENCE_LIMITS.certificate),
+  issuer: text(EXPERIENCE_LIMITS.certificate).default(""),
+  /** Year obtained, or "" when unknown. */
+  year: z
+    .union([z.literal(""), z.string().regex(/^(19[5-9]\d|20\d\d)$/, "invalid_year")])
+    .default(""),
+});
+export type Certificate = z.infer<typeof certificateSchema>;
+
+const website = z.union([
+  z.literal(""),
+  z
+    .string()
+    .trim()
+    .max(EXPERIENCE_LIMITS.website)
+    .transform((value) => (/^https?:\/\//i.test(value) ? value : `https://${value}`))
+    .pipe(z.string().url("invalid_url")),
+]);
+
 export const profileInputSchema = z.object({
   name: text(EXPERIENCE_LIMITS.name).default(""),
   headline: text(EXPERIENCE_LIMITS.headline).default(""),
   location: text(EXPERIENCE_LIMITS.location).default(""),
   email: z.union([z.literal(""), z.string().trim().email("invalid_email").max(254)]).default(""),
+  phone: z
+    .string()
+    .trim()
+    .max(EXPERIENCE_LIMITS.phone)
+    .regex(/^[+\d][\d\s()/.-]*$|^$/, "invalid_phone")
+    .default(""),
+  /** Postal address, one or two lines. */
+  address: z.string().trim().max(EXPERIENCE_LIMITS.address).default(""),
+  website: website.default(""),
   summary: text(EXPERIENCE_LIMITS.summary).default(""),
+  certificates: z.array(certificateSchema).max(EXPERIENCE_LIMITS.certificates).default([]),
+  hobbies: z
+    .array(z.string().max(EXPERIENCE_LIMITS.hobby))
+    .max(EXPERIENCE_LIMITS.hobbies * 2)
+    .default([])
+    .transform((items) => uniqueSkills(items).slice(0, EXPERIENCE_LIMITS.hobbies)),
 });
 export type ProfileInput = z.input<typeof profileInputSchema>;
 
@@ -98,9 +143,26 @@ export const experienceReferenceSchema = z.object({
 });
 export type ExperienceReference = z.infer<typeof experienceReferenceSchema>;
 
+export const profileImageSchema = z.object({
+  id: identifier,
+  /** "data:image/jpeg;base64,…", ready for an <img> and for the PDF. */
+  dataUrl: z.string().startsWith("data:image/jpeg;base64,"),
+  createdAt: z.string().datetime(),
+});
+export type ProfileImage = z.infer<typeof profileImageSchema>;
+
+export const profileImageUploadSchema = z.object({
+  data: z
+    .string()
+    .regex(/^[A-Za-z0-9+/]+={0,2}$/, "invalid_image")
+    .max(Math.ceil((EXPERIENCE_LIMITS.imageBytes * 4) / 3) + 4, "too_large"),
+});
+export type ProfileImageUpload = z.infer<typeof profileImageUploadSchema>;
+
 export const experienceSchema = z.object({
   profile: experienceProfileSchema,
   references: z.array(experienceReferenceSchema),
+  images: z.array(profileImageSchema),
 });
 export type Experience = z.infer<typeof experienceSchema>;
 

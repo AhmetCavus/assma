@@ -48,7 +48,8 @@ app.use((server) => {
   // one to three bytes in UTF-8 plus JSON escapes) needs more room than everything else.
   const cvText = express.json({ limit: "512kb" });
   // A CV (100,000 characters) or a captured listing with its brief (30,000 characters).
-  const large = (path: string) => path === "/experience/import" || path.startsWith("/projects");
+  const large = (path: string) =>
+    path === "/experience/import" || path === "/experience/images" || path.startsWith("/projects");
   const regular = express.json({ limit: "64kb" });
   api.use(requireAccount(), (request, response, next) =>
     (large(request.path) ? cvText : regular)(request, response, next),

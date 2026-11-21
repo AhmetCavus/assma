@@ -11,10 +11,12 @@ import {
   type Experience,
   type ExperienceProfile,
   type ExperienceReference,
+  type ProfileImage,
   type ReferenceInput,
 } from "@assma/shared";
 import type { ZodError } from "zod";
 import { takeFlash } from "../lib/flash";
+import { preparePhoto } from "../lib/photo";
 import type { Preferences } from "../lib/preferences";
 import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
@@ -30,6 +32,9 @@ export function fieldErrors(error: ZodError, copy: Copy["experience"]): FieldErr
     invalid_month: copy.invalidMonth,
     end_before_start: copy.endBeforeStart,
     too_many: copy.tooManySkills,
+    invalid_phone: copy.invalidPhone,
+    invalid_url: copy.invalidUrl,
+    invalid_year: copy.invalidYear,
   };
   const result: FieldErrors = {};
   for (const issue of error.issues) {
@@ -133,6 +138,53 @@ export function ExperiencePage({
     if (experience) {
       const others = experience.references.filter((reference) => reference.id !== saved.id);
       finished(text.saved, { ...experience, references: sortReferences([...others, saved]) });
+    }
+  }
+
+  async function uploadPhotos(files: File[]) {
+    setError("");
+    setStatus("");
+    for (const file of files) {
+      let data: string;
+      try {
+        data = await preparePhoto(file);
+      } catch {
+        setError(text.photoInvalid);
+        continue;
+      }
+      try {
+        const image = await api.uploadImage({ data });
+        setExperience((current) => current && { ...current, images: [...current.images, image] });
+        setStatus(text.photoUploaded);
+      } catch (failure) {
+        const code = toApiError(failure).code;
+        if (code === "image_limit") {
+          setError(text.photoLimit);
+          return;
+        }
+        if (code === "invalid_image" || code === "invalid_input") {
+          setError(text.photoInvalid);
+          continue;
+        }
+        fail(failure);
+        return;
+      }
+    }
+  }
+
+  async function deletePhoto(image: ProfileImage) {
+    if (!window.confirm(text.confirmDeletePhoto)) {
+      return;
+    }
+    try {
+      await api.deleteImage(image.id);
+      setExperience(
+        (current) =>
+          current && { ...current, images: current.images.filter((item) => item.id !== image.id) },
+      );
+      setStatus(text.photoDeleted);
+    } catch (failure) {
+      fail(failure);
     }
   }
 
@@ -248,24 +300,32 @@ export function ExperiencePage({
             )}
           </section>
 
-          <section className="card" aria-labelledby="profile-title">
-            <h2 id="profile-title">{text.profileTitle}</h2>
-            {editing?.kind === "profile" ? (
-              <ProfileForm
-                initial={experience.profile}
-                copy={copy}
-                onSave={saveProfile}
-                onCancel={() => setEditing(null)}
-                onFailure={fail}
-              />
-            ) : (
-              <ProfileSummary
-                profile={experience.profile}
-                copy={copy}
-                onEdit={() => startEditing({ kind: "profile" })}
-              />
-            )}
-          </section>
+          <div className="side-column">
+            <section className="card" aria-labelledby="profile-title">
+              <h2 id="profile-title">{text.profileTitle}</h2>
+              {editing?.kind === "profile" ? (
+                <ProfileForm
+                  initial={experience.profile}
+                  copy={copy}
+                  onSave={saveProfile}
+                  onCancel={() => setEditing(null)}
+                  onFailure={fail}
+                />
+              ) : (
+                <ProfileSummary
+                  profile={experience.profile}
+                  copy={copy}
+                  onEdit={() => startEditing({ kind: "profile" })}
+                />
+              )}
+            </section>
+            <PhotosCard
+              images={experience.images}
+              copy={copy}
+              onUpload={uploadPhotos}
+              onDelete={deletePhoto}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -282,7 +342,14 @@ function ProfileSummary({
   onEdit: () => void;
 }) {
   const text = copy.experience;
-  const details = [profile.headline, profile.location, profile.email].filter(Boolean);
+  const details = [
+    profile.headline,
+    profile.location,
+    profile.address,
+    profile.phone,
+    profile.email,
+    profile.website,
+  ].filter(Boolean);
   return (
     <>
       {profile.name && <p className="profile-name">{profile.name}</p>}
@@ -298,6 +365,30 @@ function ProfileSummary({
       ) : (
         <p className="muted">{text.profileEmpty}</p>
       )}
+      {profile.certificates.length > 0 && (
+        <>
+          <h3 className="profile-subtitle">{text.certificatesTitle}</h3>
+          <ul className="profile-list">
+            {profile.certificates.map((certificate) => (
+              <li key={certificate.name}>
+                {certificate.name}
+                {(certificate.issuer || certificate.year) && (
+                  <span className="muted">
+                    {" "}
+                    · {[certificate.issuer, certificate.year].filter(Boolean).join(", ")}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {profile.hobbies.length > 0 && (
+        <>
+          <h3 className="profile-subtitle">{text.hobbies}</h3>
+          <p className="muted">{profile.hobbies.join(" · ")}</p>
+        </>
+      )}
       <button type="button" className="pill wide" onClick={onEdit}>
         <PencilIcon />
         {text.editProfile}
@@ -305,6 +396,8 @@ function ProfileSummary({
     </>
   );
 }
+
+type CertificateRow = { name: string; issuer: string; year: string };
 
 function ProfileForm({
   initial,
@@ -321,13 +414,29 @@ function ProfileForm({
 }) {
   const text = copy.experience;
   const [values, setValues] = useState(initial);
+  const [hobbies, setHobbies] = useState(initial.hobbies.join(", "));
+  const [certificates, setCertificates] = useState<CertificateRow[]>(initial.certificates);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
   const set = (field: keyof ExperienceProfile) => (event: { target: { value: string } }) =>
     setValues((current) => ({ ...current, [field]: event.target.value }));
+  const setCertificate =
+    (index: number, field: keyof CertificateRow) => (event: { target: { value: string } }) =>
+      setCertificates((current) =>
+        current.map((row, position) =>
+          position === index ? { ...row, [field]: event.target.value } : row,
+        ),
+      );
 
   async function submit() {
-    const parsed = profileInputSchema.safeParse(values);
+    const parsed = profileInputSchema.safeParse({
+      ...values,
+      hobbies: parseSkills(hobbies),
+      // Rows left completely empty are dropped instead of failing validation.
+      certificates: certificates.filter(
+        (row) => row.name.trim() || row.issuer.trim() || row.year.trim(),
+      ),
+    });
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error, text));
       return;
@@ -353,7 +462,13 @@ function ProfileForm({
       }}
     >
       <Field label={text.name} error={errors.name}>
-        <input value={values.name} onChange={set("name")} maxLength={80} autoFocus />
+        <input
+          value={values.name}
+          onChange={set("name")}
+          maxLength={80}
+          autoFocus
+          autoComplete="name"
+        />
       </Field>
       <Field label={text.headline} hint={text.headlineHint} error={errors.headline}>
         <input value={values.headline} onChange={set("headline")} maxLength={80} />
@@ -361,21 +476,177 @@ function ProfileForm({
       <Field label={text.location} error={errors.location}>
         <input value={values.location} onChange={set("location")} maxLength={80} />
       </Field>
-      <Field label={text.email} error={errors.email}>
+      <Field label={text.address} hint={text.addressHint} error={errors.address}>
+        <textarea
+          value={values.address}
+          onChange={set("address")}
+          maxLength={200}
+          rows={2}
+          autoComplete="street-address"
+        />
+      </Field>
+      <div className="form-row">
+        <Field label={text.phone} error={errors.phone}>
+          <input
+            type="tel"
+            value={values.phone}
+            onChange={set("phone")}
+            maxLength={40}
+            autoComplete="tel"
+          />
+        </Field>
+        <Field label={text.email} error={errors.email}>
+          <input
+            type="email"
+            value={values.email}
+            onChange={set("email")}
+            maxLength={254}
+            autoCapitalize="none"
+            spellCheck={false}
+            autoComplete="email"
+          />
+        </Field>
+      </div>
+      <Field label={text.website} error={errors.website}>
         <input
-          type="email"
-          value={values.email}
-          onChange={set("email")}
-          maxLength={254}
+          value={values.website}
+          onChange={set("website")}
+          maxLength={200}
           autoCapitalize="none"
           spellCheck={false}
+          placeholder="https://"
         />
       </Field>
       <Field label={text.summary} hint={text.summaryHint} error={errors.summary}>
         <textarea value={values.summary} onChange={set("summary")} maxLength={800} rows={4} />
       </Field>
+      <fieldset className="certificate-rows">
+        <legend>{text.certificatesTitle}</legend>
+        {certificates.map((row, index) => (
+          <div key={index} className="certificate-row">
+            <input
+              aria-label={text.certificateName}
+              placeholder={text.certificateName}
+              value={row.name}
+              onChange={setCertificate(index, "name")}
+              maxLength={120}
+            />
+            <input
+              aria-label={text.certificateIssuer}
+              placeholder={text.certificateIssuer}
+              value={row.issuer}
+              onChange={setCertificate(index, "issuer")}
+              maxLength={120}
+            />
+            <input
+              aria-label={text.certificateYear}
+              placeholder={text.certificateYear}
+              value={row.year}
+              onChange={setCertificate(index, "year")}
+              inputMode="numeric"
+              maxLength={4}
+            />
+            <button
+              type="button"
+              className="icon-button small-button"
+              onClick={() =>
+                setCertificates((current) => current.filter((_, position) => position !== index))
+              }
+              aria-label={text.removeCertificate(row.name)}
+              title={text.removeCertificate(row.name)}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {errors.certificates && (
+          <small className="field-error" role="alert">
+            {errors.certificates}
+          </small>
+        )}
+        <button
+          type="button"
+          className="pill"
+          onClick={() =>
+            setCertificates((current) => [...current, { name: "", issuer: "", year: "" }])
+          }
+          disabled={certificates.length >= 30}
+        >
+          <span aria-hidden="true">+</span>
+          {text.addCertificate}
+        </button>
+      </fieldset>
+      <Field label={text.hobbies} hint={text.hobbiesHint} error={errors.hobbies}>
+        <input value={hobbies} onChange={(event) => setHobbies(event.target.value)} />
+      </Field>
       <FormActions busy={busy} copy={copy} onCancel={onCancel} />
     </form>
+  );
+}
+
+function PhotosCard({
+  images,
+  copy,
+  onUpload,
+  onDelete,
+}: {
+  images: ProfileImage[];
+  copy: Copy;
+  onUpload: (files: File[]) => Promise<void>;
+  onDelete: (image: ProfileImage) => Promise<void>;
+}) {
+  const text = copy.experience;
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const full = images.length >= 6;
+  return (
+    <section className="card" aria-labelledby="photos-title">
+      <h2 id="photos-title">{text.photosTitle}</h2>
+      <p className="muted small">{text.photosLead}</p>
+      {images.length > 0 && (
+        <ul className="photo-grid">
+          {images.map((image, index) => (
+            <li key={image.id}>
+              <img src={image.dataUrl} alt={text.photoAlt(index + 1)} />
+              <button
+                type="button"
+                className="icon-button small-button photo-delete"
+                onClick={() => void onDelete(image)}
+                aria-label={`${text.deletePhoto} ${index + 1}`}
+                title={text.deletePhoto}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button
+        type="button"
+        className="pill"
+        disabled={busy || full}
+        onClick={() => input.current?.click()}
+      >
+        <span aria-hidden="true">+</span>
+        {busy ? text.uploading : text.uploadPhoto}
+      </button>
+      {full && <p className="muted small">{text.photoLimit}</p>}
+      <input
+        ref={input}
+        type="file"
+        hidden
+        multiple
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        onChange={(event) => {
+          const files = [...(event.target.files ?? [])];
+          event.target.value = "";
+          if (files.length > 0) {
+            setBusy(true);
+            void onUpload(files).finally(() => setBusy(false));
+          }
+        }}
+      />
+    </section>
   );
 }
 

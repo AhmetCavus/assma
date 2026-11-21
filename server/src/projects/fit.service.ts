@@ -160,6 +160,9 @@ export async function saveCv(account: Account, projectId: string, input: unknown
   if (cv.referenceIds.some((id) => !known.has(id))) {
     throw new AssmaError(400, "unknown_reference");
   }
+  if (cv.imageId && !(await experience.imageExists(account.id, cv.imageId))) {
+    throw new AssmaError(400, "unknown_image");
+  }
   const updated = await repository.updateProject(account.id, projectId, { cv });
   if (!updated) {
     throw notFound();

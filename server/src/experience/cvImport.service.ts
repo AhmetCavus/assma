@@ -2,6 +2,8 @@ import {
   cvImportApplySchema,
   cvImportRequestSchema,
   EXPERIENCE_LIMITS,
+  profileFill,
+  profileInputSchema,
   type CvImportApplied,
   type CvImportJob,
   type CvImportStatus,
@@ -66,21 +68,14 @@ export async function apply(account: Account, input: unknown): Promise<CvImportA
   let profileFields: string[] = [];
   if (selection.profile) {
     const saved = await repository.findProfile(account.id);
-    const fill = Object.fromEntries(
-      Object.entries(selection.profile).filter(
-        ([field, value]) => value && !saved?.[field as keyof typeof selection.profile],
-      ),
-    );
+    const fill = profileFill(saved, profileInputSchema.required().parse(selection.profile));
     profileFields = Object.keys(fill);
     if (profileFields.length > 0 || !saved) {
-      await repository.saveProfile(account.id, {
-        name: saved?.name ?? "",
-        headline: saved?.headline ?? "",
-        location: saved?.location ?? "",
-        email: saved?.email ?? "",
-        summary: saved?.summary ?? "",
-        ...fill,
-      });
+      const { updatedAt: _updatedAt, ...current } = saved ?? {
+        ...profileInputSchema.parse({}),
+        updatedAt: null,
+      };
+      await repository.saveProfile(account.id, { ...current, ...fill });
     }
   }
   await repository.createReferences(account.id, selection.references);

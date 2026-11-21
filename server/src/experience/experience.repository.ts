@@ -1,10 +1,14 @@
 import {
   experienceProfileSchema,
   experienceReferenceSchema,
+  profileImageSchema,
   type ExperienceProfile,
+  type ProfileImage,
   type ExperienceReference,
 } from "@assma/shared";
 import ProfileModel, { type ExperienceProfileRecord } from "../models/experienceProfile.model.js";
+import { bytesOf } from "../platform/bytes.js";
+import ImageModel, { type ProfileImageRecord } from "../models/profileImage.model.js";
 import ReferenceModel, {
   type ExperienceReferenceRecord,
 } from "../models/experienceReference.model.js";
@@ -19,7 +23,12 @@ function toProfile(record: ExperienceProfileRecord): ExperienceProfile {
     headline: record.headline ?? "",
     location: record.location ?? "",
     email: record.email ?? "",
+    phone: record.phone ?? "",
+    address: record.address ?? "",
+    website: record.website ?? "",
     summary: record.summary ?? "",
+    certificates: Array.isArray(record.certificates) ? record.certificates : [],
+    hobbies: Array.isArray(record.hobbies) ? record.hobbies : [],
     updatedAt: record.updatedAt.toISOString(),
   });
 }
@@ -110,5 +119,44 @@ export async function updateReference(
 
 export async function deleteReference(ownerId: string, id: string): Promise<boolean> {
   const result = await ReferenceModel.model.deleteOne({ _id: id, ownerId });
+  return result.deletedCount > 0;
+}
+
+// Profile photos -------------------------------------------------------------------------
+
+type StoredImage = ProfileImageRecord & { _id: unknown };
+
+function toImage(record: StoredImage): ProfileImage {
+  return profileImageSchema.parse({
+    id: String(record._id),
+    dataUrl: `data:image/jpeg;base64,${bytesOf(record.data).toString("base64")}`,
+    createdAt: record.createdAt.toISOString(),
+  });
+}
+
+export async function listImages(ownerId: string): Promise<ProfileImage[]> {
+  const records = await ImageModel.model
+    .find({ ownerId })
+    .sort({ createdAt: 1 })
+    .limit(50)
+    .lean<StoredImage[]>();
+  return records.map(toImage);
+}
+
+export async function countImages(ownerId: string): Promise<number> {
+  return ImageModel.model.countDocuments({ ownerId });
+}
+
+export async function imageExists(ownerId: string, id: string): Promise<boolean> {
+  return Boolean(await ImageModel.model.exists({ _id: id, ownerId }));
+}
+
+export async function createImage(ownerId: string, data: Buffer): Promise<ProfileImage> {
+  const created = await ImageModel.model.create({ ownerId, data, createdAt: new Date() });
+  return toImage(created.toObject() as StoredImage);
+}
+
+export async function deleteImage(ownerId: string, id: string): Promise<boolean> {
+  const result = await ImageModel.model.deleteOne({ _id: id, ownerId });
   return result.deletedCount > 0;
 }

@@ -15,7 +15,7 @@ const CLOSED_PLATFORM_ROUTES = /^\/(password|otp|totp|email)(\/|$)|^\/authentica
 // Account security records hold secrets and experience records hold a person's CV data; not even
 // admins read them through the generic API (the admin panel shows totals only, never content).
 const SEALED_COLLECTIONS =
-  /^\/collection\/(assmaaccountsecurity|assmaexperienceprofile|assmaexperiencereference|assmaproject)(\/|$)/i;
+  /^\/collection\/(assmaaccountsecurity|assmaexperienceprofile|assmaexperiencereference|assmaproject|assmaprofileimage)(\/|$)/i;
 const PLATFORM_LOGIN = /^\/authenticate\/?$/;
 const platformLogins = new RateLimiter(40, 15 * 60 * 1000);
 

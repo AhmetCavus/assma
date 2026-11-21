@@ -99,6 +99,8 @@ test("the fingerprint changes with requirements or references, not with their or
 test("a CV draft keeps each reference once, in order", () => {
   assert.deepEqual(cvDraftSchema.parse({ summary: " Hi ", referenceIds: [E02, E01, E02] }), {
     summary: "Hi",
+    imageId: null,
+    skills: null,
     referenceIds: [E02, E01],
   });
   assert.equal(cvDraftSchema.safeParse({ referenceIds: ["x"] }).success, false);

@@ -8,6 +8,8 @@ import {
 } from "../account.js";
 import {
   experienceProfileSchema,
+  profileImageSchema,
+  type ProfileImageUpload,
   experienceReferenceSchema,
   experienceSchema,
   type ProfileInput,
@@ -71,6 +73,14 @@ export class AssmaApi {
 
   saveProfile(input: ProfileInput) {
     return this.call("put", "/experience/profile", experienceProfileSchema, input);
+  }
+
+  uploadImage(input: ProfileImageUpload) {
+    return this.call("post", "/experience/images", profileImageSchema, input);
+  }
+
+  deleteImage(id: string) {
+    return this.call("delete", `/experience/images/${id}`, z.object({ id: z.string() }));
   }
 
   createReference(input: ReferenceInput) {

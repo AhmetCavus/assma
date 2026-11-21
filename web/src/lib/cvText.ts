@@ -27,8 +27,10 @@ function kind(file: File): "pdf" | "docx" | "text" | null {
 
 /** Reads the text layer of each page; items flagged as line ends become line breaks. */
 async function pdfText(data: ArrayBuffer): Promise<string> {
-  const pdfjs = await import("pdfjs-dist");
-  const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  // The legacy build carries polyfills: the modern one relies on JavaScript features
+  // (such as Map.getOrInsertComputed) that current Safari and Firefox ESR lack.
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const worker = await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url");
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
   const task = pdfjs.getDocument({ data: new Uint8Array(data) });
   const document = await task.promise;

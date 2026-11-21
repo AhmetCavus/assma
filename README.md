@@ -61,10 +61,26 @@ either changes. "Save and check fit" on the capture page opens the fit and start
 assessment. The register shows the score.
 
 The tailored CV starts from the profile summary and the references that support the fit,
-ordered by weight. The person edits the short profile, selects and orders references and
-saves the draft on the project. The preview, Markdown and PDF (pdf-lib, standard Helvetica,
-generated in the browser) render the same document; letters Helvetica lacks lose their
-accent (ş → s) or get a look-alike instead of breaking the export.
+ordered by weight. The person picks a photo, edits the short profile, chooses the skills of
+the matrix and selects and orders references, and saves the draft on the project.
+
+The Experience page holds what a full CV needs: contact details (address, phone, email,
+website), certificates, hobbies and up to six profile photos. Photos are cropped to a
+square JPEG in the browser and stored privately (`AssmaProfileImage`); the CV import also
+reads phone, address, website, certificates and hobbies.
+
+The **skill matrix** is computed from the project references (`shared/src/skills.ts`): years
+per technology and per role are the union of the project periods, so overlapping projects
+count once, plus the number of projects and the year last used; the total experience is the
+union of all periods. Skills the project asks for come first.
+
+The preview, the Markdown and the PDF render the same document. The PDF (pdf-lib, generated
+in the browser) has a dark sidebar with the round photo, contact, skill matrix with bars,
+certificates and hobbies beside the main column with name, role, experience, profile, roles
+with years and the project history as a timeline with technology tags; both columns flow
+onto further pages, with page numbers. Inter (`inter-font`) is embedded whole with
+contextual alternates off: fontkit's subsetting drops Inter glyphs, and the alternates have
+other widths than pdf-lib measures. A CV PDF is about 0.6 MB.
 
 Applications (email and portal), statistics and the assistant follow in later iterations.
 

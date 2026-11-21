@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  defaultSkills,
   FIT_LIMITS,
+  formatYears,
   referenceLabel,
+  relevantTo,
+  skillRows,
   supportingReferences,
   toApiError,
   type Experience,
@@ -20,15 +24,25 @@ import { projectsChanged } from "../lib/projects";
 import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
 
-type Draft = { summary: string; referenceIds: string[] };
+type Draft = {
+  summary: string;
+  referenceIds: string[];
+  imageId: string | null;
+  /** null: the recommended selection (project-relevant first, then most practised). */
+  skills: string[] | null;
+};
 
-/** The saved draft, or a first one: the profile summary and the references the fit supports. */
+/** The saved draft, or a first one: profile summary, references the fit supports, first photo. */
 function initialDraft(project: Project, experience: Experience): Draft {
   const known = new Set(experience.references.map((reference) => reference.id));
+  const photos = new Set(experience.images.map((image) => image.id));
+  const firstPhoto = experience.images[0]?.id ?? null;
   if (project.cv) {
     return {
       summary: project.cv.summary,
       referenceIds: project.cv.referenceIds.filter((id) => known.has(id)),
+      imageId: project.cv.imageId && photos.has(project.cv.imageId) ? project.cv.imageId : null,
+      skills: project.cv.skills,
     };
   }
   const supporting = project.fit
@@ -40,6 +54,8 @@ function initialDraft(project: Project, experience: Experience): Draft {
       ? supporting
       : experience.references.map((reference) => reference.id)
     ).slice(0, FIT_LIMITS.cvReferences),
+    imageId: firstPhoto,
+    skills: null,
   };
 }
 
@@ -57,11 +73,17 @@ export function ProjectCvPage({
   const { api, signOut } = session;
   const [project, setProject] = useState<Project | null>(null);
   const [experience, setExperience] = useState<Experience | null>(null);
-  const [draft, setDraft] = useState<Draft>({ summary: "", referenceIds: [] });
+  const [draft, setDraft] = useState<Draft>({
+    summary: "",
+    referenceIds: [],
+    imageId: null,
+    skills: null,
+  });
   const [saved, setSaved] = useState<Draft | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   function fail(failure: unknown) {
     const apiError = toApiError(failure);
@@ -91,6 +113,8 @@ export function ProjectCvPage({
     };
   }, [api, id]);
 
+  const rows = useMemo(() => (experience ? skillRows(experience.references) : []), [experience]);
+
   if (!project || !experience) {
     return (
       <div className="page wide">
@@ -109,16 +133,27 @@ export function ProjectCvPage({
   const selected = draft.referenceIds
     .map((referenceId) => references.find((reference) => reference.id === referenceId))
     .filter((reference): reference is NonNullable<typeof reference> => Boolean(reference));
-  // Selected references first in CV order, then the others in Experience order.
   const ordered = [
     ...selected,
     ...references.filter((reference) => !draft.referenceIds.includes(reference.id)),
   ];
-  const document = cvDocument(experience.profile, draft.summary, selected, copy, locale);
+  const recommended = defaultSkills(rows, project);
+  const skills = draft.skills ?? recommended;
+  const photo = experience.images.find((image) => image.id === draft.imageId)?.dataUrl ?? null;
+  const document = cvDocument({
+    profile: experience.profile,
+    summary: draft.summary,
+    references: selected,
+    allReferences: references,
+    skills,
+    photo,
+    copy,
+    locale,
+  });
   const dirty = JSON.stringify(saved) !== JSON.stringify(draft);
   const fileName = cvFileName(document, project.company || project.title);
 
-  const toggle = (referenceId: string) =>
+  const toggleReference = (referenceId: string) =>
     setDraft((current) => ({
       ...current,
       referenceIds: current.referenceIds.includes(referenceId)
@@ -126,7 +161,7 @@ export function ProjectCvPage({
         : [...current.referenceIds, referenceId].slice(0, FIT_LIMITS.cvReferences),
     }));
 
-  const move = (referenceId: string, step: -1 | 1) =>
+  const moveReference = (referenceId: string, step: -1 | 1) =>
     setDraft((current) => {
       const ids = [...current.referenceIds];
       const index = ids.indexOf(referenceId);
@@ -136,6 +171,17 @@ export function ProjectCvPage({
       }
       [ids[index], ids[target]] = [ids[target]!, ids[index]!];
       return { ...current, referenceIds: ids };
+    });
+
+  const toggleSkill = (name: string) =>
+    setDraft((current) => {
+      const list = current.skills ?? recommended;
+      return {
+        ...current,
+        skills: list.includes(name)
+          ? list.filter((item) => item !== name)
+          : [...list, name].slice(0, FIT_LIMITS.cvSkills),
+      };
     });
 
   async function save() {
@@ -156,16 +202,22 @@ export function ProjectCvPage({
 
   async function exportPdf() {
     setError("");
+    setExporting(true);
     try {
       const bytes = await cvPdf(document);
       download(
         `${fileName}.pdf`,
         new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/pdf" }),
       );
-    } catch {
+    } catch (failure) {
+      console.error("CV export failed", failure);
       setError(copy.common.error);
+    } finally {
+      setExporting(false);
     }
   }
+
+  const years = (value: number) => formatYears(value, locale, text.yearsUnit);
 
   return (
     <div className="page wide">
@@ -187,9 +239,45 @@ export function ProjectCvPage({
         </p>
       )}
       {!experience.profile.name && <p className="alert">{text.missingProfile}</p>}
-      <div className="capture-grid">
+      <div className="cv-grid">
         <section className="card" aria-labelledby="cv-content-title">
           <h2 id="cv-content-title">{text.contentTitle}</h2>
+
+          <h3 className="section-title">{text.photoTitle}</h3>
+          {experience.images.length === 0 ? (
+            <p className="muted small">
+              {text.photoHint}{" "}
+              <a className="link" href="/experience" onClick={linkHandler("/experience")}>
+                {copy.fit.toExperience}
+              </a>
+            </p>
+          ) : (
+            <div className="photo-choice" role="radiogroup" aria-label={text.photoTitle}>
+              {experience.images.map((image, index) => (
+                <label key={image.id} className={draft.imageId === image.id ? "selected" : ""}>
+                  <input
+                    type="radio"
+                    className="visually-hidden"
+                    name="cv-photo"
+                    checked={draft.imageId === image.id}
+                    onChange={() => setDraft((current) => ({ ...current, imageId: image.id }))}
+                  />
+                  <img src={image.dataUrl} alt={copy.experience.photoAlt(index + 1)} />
+                </label>
+              ))}
+              <label className={draft.imageId === null ? "selected no-photo" : "no-photo"}>
+                <input
+                  type="radio"
+                  className="visually-hidden"
+                  name="cv-photo"
+                  checked={draft.imageId === null}
+                  onChange={() => setDraft((current) => ({ ...current, imageId: null }))}
+                />
+                <span>{text.noPhoto}</span>
+              </label>
+            </div>
+          )}
+
           <div className="form compact">
             <label>
               {text.summary}
@@ -204,6 +292,49 @@ export function ProjectCvPage({
               <small className="muted">{text.summaryHint}</small>
             </label>
           </div>
+
+          <div className="section-row">
+            <h3 className="section-title">{text.skillsTitle}</h3>
+            {draft.skills !== null && (
+              <button
+                type="button"
+                className="link"
+                onClick={() => setDraft((current) => ({ ...current, skills: null }))}
+              >
+                {text.skillsAuto}
+              </button>
+            )}
+          </div>
+          <p className="muted small">{text.skillsHint}</p>
+          {rows.length === 0 ? (
+            <p className="muted">{text.noSkills}</p>
+          ) : (
+            <ul className="skill-choices">
+              {rows.map((row) => {
+                const chosen = skills.includes(row.name);
+                return (
+                  <li key={row.name}>
+                    <label className={`chip ${chosen ? "selected" : ""}`}>
+                      <input
+                        type="checkbox"
+                        className="visually-hidden"
+                        checked={chosen}
+                        onChange={() => toggleSkill(row.name)}
+                      />
+                      {relevantTo(row.name, project) && (
+                        <span className="relevant" aria-hidden="true">
+                          ★
+                        </span>
+                      )}
+                      {row.name}
+                      <span className="chip-detail">{years(row.years)}</span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
           <h3 className="section-title">{text.referencesTitle}</h3>
           <p className="muted small">{text.referencesHint}</p>
           {references.length === 0 ? (
@@ -220,7 +351,7 @@ export function ProjectCvPage({
                       <input
                         type="checkbox"
                         checked={chosen}
-                        onChange={() => toggle(reference.id)}
+                        onChange={() => toggleReference(reference.id)}
                       />
                       <span>
                         <strong>{reference.organization}</strong>{" "}
@@ -232,7 +363,7 @@ export function ProjectCvPage({
                         <button
                           type="button"
                           className="pill"
-                          onClick={() => move(reference.id, -1)}
+                          onClick={() => moveReference(reference.id, -1)}
                           disabled={position === 0}
                           aria-label={`${text.up}: ${reference.organization}`}
                         >
@@ -241,7 +372,7 @@ export function ProjectCvPage({
                         <button
                           type="button"
                           className="pill"
-                          onClick={() => move(reference.id, 1)}
+                          onClick={() => moveReference(reference.id, 1)}
                           disabled={position === draft.referenceIds.length - 1}
                           aria-label={`${text.down}: ${reference.organization}`}
                         >
@@ -276,49 +407,121 @@ export function ProjectCvPage({
               <DownloadIcon />
               {text.markdown}
             </button>
-            <button type="button" className="pill" onClick={() => void exportPdf()}>
+            <button
+              type="button"
+              className="pill"
+              onClick={() => void exportPdf()}
+              disabled={exporting}
+            >
               <DownloadIcon />
-              {text.pdf}
+              {exporting ? copy.common.working : text.pdf}
             </button>
           </div>
         </section>
         <section className="card" aria-labelledby="preview-title">
           <h2 id="preview-title">{text.previewTitle}</h2>
-          <CvPreview document={document} />
+          <CvPreview cv={document} />
         </section>
       </div>
     </div>
   );
 }
 
-function CvPreview({ document }: { document: CvDocument }) {
+/** The same layout as the PDF: dark sidebar beside the main column. */
+function CvPreview({ cv }: { cv: CvDocument }) {
+  const longest = Math.max(...cv.matrix.map((row) => row.years), 1);
   return (
-    <article className="cv-paper">
-      <h3 className="cv-name">{document.name || "CV"}</h3>
-      {document.details.map((detail) => (
-        <p key={detail} className="cv-detail">
-          {detail}
-        </p>
-      ))}
-      {document.summary && (
-        <>
-          <h4>{document.headings.profile}</h4>
-          <p className="cv-text">{document.summary}</p>
-        </>
-      )}
-      {document.references.length > 0 && <h4>{document.headings.projects}</h4>}
-      {document.references.map((reference, index) => (
-        <section key={`${reference.organization}-${index}`} className="cv-reference">
-          <h5>{reference.organization}</h5>
-          <p className="cv-detail">{reference.meta}</p>
-          <p className="cv-text">{reference.contribution}</p>
-          {reference.skills.length > 0 && (
-            <p className="cv-skills">
-              {document.headings.skills}: {reference.skills.join(", ")}
-            </p>
-          )}
-        </section>
-      ))}
+    <article className="cv-sheet">
+      <aside className="cv-side">
+        {cv.photo && <img className="cv-photo" src={cv.photo} alt="" />}
+        {cv.contact.length > 0 && (
+          <section>
+            <h4>{cv.labels.contact}</h4>
+            {cv.contact.map((entry) => (
+              <p key={entry.kind} className="cv-contact">
+                {entry.value}
+              </p>
+            ))}
+          </section>
+        )}
+        {cv.matrix.length > 0 && (
+          <section>
+            <h4>{cv.labels.matrix}</h4>
+            {cv.matrix.map((row) => (
+              <div key={row.name} className="cv-skill" title={row.detail}>
+                <div>
+                  <strong>{row.name}</strong>
+                  <span>{row.yearsLabel}</span>
+                </div>
+                <span className="cv-bar">
+                  <span style={{ width: `${Math.max(4, (row.years / longest) * 100)}%` }} />
+                </span>
+              </div>
+            ))}
+          </section>
+        )}
+        {cv.certificates.length > 0 && (
+          <section>
+            <h4>{cv.labels.certificates}</h4>
+            {cv.certificates.map((certificate) => (
+              <p key={certificate.name} className="cv-certificate">
+                <strong>{certificate.name}</strong>
+                {certificate.detail && <span>{certificate.detail}</span>}
+              </p>
+            ))}
+          </section>
+        )}
+        {cv.hobbies.length > 0 && (
+          <section>
+            <h4>{cv.labels.hobbies}</h4>
+            <p className="cv-contact">{cv.hobbies.join(" · ")}</p>
+          </section>
+        )}
+      </aside>
+      <div className="cv-main">
+        <h3 className="cv-name">{cv.name || "CV"}</h3>
+        {cv.headline && <p className="cv-headline">{cv.headline}</p>}
+        {cv.experience && <span className="cv-pill">{cv.experience}</span>}
+        {cv.summary && (
+          <section>
+            <h4>{cv.labels.profile}</h4>
+            <p className="cv-text">{cv.summary}</p>
+          </section>
+        )}
+        {cv.roles.length > 0 && (
+          <section>
+            <h4>{cv.labels.roles}</h4>
+            {cv.roles.map((role) => (
+              <p key={role.name} className="cv-role">
+                <span>{role.name}</span>
+                <strong>{role.yearsLabel}</strong>
+              </p>
+            ))}
+          </section>
+        )}
+        {cv.references.length > 0 && (
+          <section>
+            <h4>{cv.labels.projects}</h4>
+            {cv.references.map((reference, index) => (
+              <div key={`${reference.organization}-${index}`} className="cv-entry">
+                <div className="cv-entry-head">
+                  <strong>{reference.organization}</strong>
+                  <span>{reference.period}</span>
+                </div>
+                <p className="cv-entry-role">{reference.role}</p>
+                <p className="cv-text">{reference.contribution}</p>
+                {reference.skills.length > 0 && (
+                  <p className="cv-tags">
+                    {reference.skills.map((skill) => (
+                      <span key={skill}>{skill}</span>
+                    ))}
+                  </p>
+                )}
+              </div>
+            ))}
+          </section>
+        )}
+      </div>
     </article>
   );
 }

@@ -18,7 +18,13 @@ export type FitStatus = z.infer<typeof fitStatusSchema>;
 export const REQUIREMENT_KINDS = ["required", "preferred"] as const;
 export type RequirementKind = (typeof REQUIREMENT_KINDS)[number];
 
-export const FIT_LIMITS = { note: 300, referencesPerFinding: 3, summary: 1500, cvReferences: 20 };
+export const FIT_LIMITS = {
+  note: 300,
+  referencesPerFinding: 3,
+  summary: 1500,
+  cvReferences: 20,
+  cvSkills: 24,
+};
 
 export const findingSchema = z.object({
   requirement: z.string(),
@@ -179,6 +185,14 @@ export function normaliseFindings(
 
 export const cvDraftSchema = z.object({
   summary: z.string().trim().max(FIT_LIMITS.summary).default(""),
+  /** The photo on this CV; null for none. */
+  imageId: identifier.nullable().default(null),
+  /** Skills shown in the matrix, in order; null lets assma choose (project-relevant first). */
+  skills: z
+    .array(z.string().trim().min(1).max(40))
+    .max(FIT_LIMITS.cvSkills)
+    .nullable()
+    .default(null),
   /** Selected references in CV order. */
   referenceIds: z
     .array(identifier)

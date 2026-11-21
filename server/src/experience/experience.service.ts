@@ -1,5 +1,6 @@
 import {
   EXPERIENCE_LIMITS,
+  profileImageUploadSchema,
   profileInputSchema,
   referenceInputSchema,
   sortReferences,
@@ -30,11 +31,12 @@ async function profileOrDraft(account: Account) {
 }
 
 export async function experience(account: Account): Promise<Experience> {
-  const [profile, references] = await Promise.all([
+  const [profile, references, images] = await Promise.all([
     profileOrDraft(account),
     repository.listReferences(account.id),
+    repository.listImages(account.id),
   ]);
-  return { profile, references: sortReferences(references) };
+  return { profile, references: sortReferences(references), images };
 }
 
 export async function saveProfile(account: Account, input: unknown) {
@@ -63,6 +65,36 @@ export async function updateReference(account: Account, id: string, input: unkno
 
 export async function deleteReference(account: Account, id: string) {
   if (!(await repository.deleteReference(account.id, id))) {
+    throw notFound();
+  }
+  return { id };
+}
+
+const JPEG_START = Buffer.from([0xff, 0xd8, 0xff]);
+const JPEG_END = Buffer.from([0xff, 0xd9]);
+
+/**
+ * Stores a profile photo. The browser crops and resizes it to a square JPEG; the API only
+ * accepts what really is a complete JPEG within the size limit.
+ */
+export async function uploadImage(account: Account, input: unknown) {
+  const { data } = profileImageUploadSchema.parse(input);
+  const bytes = Buffer.from(data, "base64");
+  const complete =
+    bytes.subarray(0, 3).equals(JPEG_START) &&
+    bytes.subarray(-2).equals(JPEG_END) &&
+    bytes.length <= EXPERIENCE_LIMITS.imageBytes;
+  if (!complete) {
+    throw new AssmaError(400, "invalid_image");
+  }
+  if ((await repository.countImages(account.id)) >= EXPERIENCE_LIMITS.images) {
+    throw new AssmaError(409, "image_limit");
+  }
+  return repository.createImage(account.id, bytes);
+}
+
+export async function deleteImage(account: Account, id: string) {
+  if (!(await repository.deleteImage(account.id, id))) {
     throw notFound();
   }
   return { id };

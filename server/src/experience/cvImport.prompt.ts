@@ -10,9 +10,36 @@ export const CV_SCHEMA = {
         headline: { type: "string" },
         location: { type: "string" },
         email: { type: "string" },
+        phone: { type: "string" },
+        address: { type: "string" },
+        website: { type: "string" },
         summary: { type: "string" },
+        certificates: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              issuer: { type: "string" },
+              year: { type: "string" },
+            },
+            required: ["name", "issuer", "year"],
+          },
+        },
+        hobbies: { type: "array", items: { type: "string" } },
       },
-      required: ["name", "headline", "location", "email", "summary"],
+      required: [
+        "name",
+        "headline",
+        "location",
+        "email",
+        "phone",
+        "address",
+        "website",
+        "summary",
+        "certificates",
+        "hobbies",
+      ],
     },
     references: {
       type: "array",
@@ -42,6 +69,11 @@ Rules:
 - profile.headline: the person's job title only, for example "Android Engineer". No location, email or phone.
 - profile.location: city or region only.
 - profile.email: the email address, or "".
+- profile.phone: the phone number as written, or "".
+- profile.address: the postal address in one line (street, postal code and city), or "".
+- profile.website: a personal website, portfolio or profile link, or "".
+- profile.certificates: certifications with issuer and year ("YYYY") where stated. Not degrees.
+- profile.hobbies: hobbies and interests, short entries.
 - profile.summary: the CV's own profile or summary text, at most three sentences.
 - references: one entry per project, client engagement or position, most recent first. Do not include education, certificates, languages or hobbies.
 - organization: the client, company or employer. role: the person's role there.

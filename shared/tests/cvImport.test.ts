@@ -7,6 +7,8 @@ import {
   isKnownReference,
   mergeSuggestions,
   normaliseSuggestions,
+  profileFill,
+  profileInputSchema,
   readMonth,
   referenceInputSchema,
   splitCvText,
@@ -126,6 +128,8 @@ test("long CVs split at paragraph breaks, overlap, and cover the whole text", ()
   assert.deepEqual(splitCvText("short CV"), ["short CV"]);
 });
 
+const emptyProfile = profileInputSchema.required().parse({});
+
 test("merging keeps one entry per position with the fuller details", () => {
   const base = {
     organization: "Paylane GmbH",
@@ -138,11 +142,16 @@ test("merging keeps one entry per position with the fuller details", () => {
   };
   const merged = mergeSuggestions([
     {
-      profile: { name: "Jonas", headline: "", location: "", email: "", summary: "" },
+      profile: { ...emptyProfile, name: "Jonas", hobbies: ["Segeln"] },
       references: [base],
     },
     {
-      profile: { name: "Other", headline: "Developer", location: "", email: "", summary: "" },
+      profile: {
+        ...emptyProfile,
+        name: "Other",
+        headline: "Developer",
+        hobbies: ["segeln", "Klettern"],
+      },
       references: [
         {
           ...base,
@@ -156,6 +165,7 @@ test("merging keeps one entry per position with the fuller details", () => {
   ]);
   assert.equal(merged.profile.name, "Jonas");
   assert.equal(merged.profile.headline, "Developer");
+  assert.deepEqual(merged.profile.hobbies, ["Segeln", "Klettern"]);
   assert.equal(merged.references.length, 2);
   assert.equal(merged.references[0]!.contribution, "Built the SEPA service.");
   assert.deepEqual(merged.references[0]!.skills, ["Java", "Spring"]);
@@ -167,4 +177,48 @@ test("the duration estimate is a range that grows with the text", () => {
   assert.ok(short.min < short.max && short.max < 120);
   assert.ok(long.min > short.max);
   assert.ok(long.min < long.max);
+});
+
+test("contact details, certificates and hobbies are read from the CV", () => {
+  const { profile } = normaliseSuggestions({
+    profile: {
+      name: "Mara",
+      phone: "+49 170 1234567",
+      address: "Königsallee 1,  40212 Düsseldorf",
+      website: "linden.example",
+      certificates: [
+        { name: "AWS Solutions Architect", issuer: "Amazon", year: "2023" },
+        "Scrum Master",
+        { name: "aws solutions architect", issuer: "", year: "x" },
+      ],
+      hobbies: ["Segeln", "segeln", 4, "Klettern"],
+    },
+  });
+  assert.equal(profile.phone, "+49 170 1234567");
+  assert.equal(profile.address, "Königsallee 1, 40212 Düsseldorf");
+  assert.equal(profile.website, "https://linden.example");
+  assert.deepEqual(profile.certificates, [
+    { name: "AWS Solutions Architect", issuer: "Amazon", year: "2023" },
+    { name: "Scrum Master", issuer: "", year: "" },
+  ]);
+  assert.deepEqual(profile.hobbies, ["Segeln", "Klettern"]);
+  assert.equal(normaliseSuggestions({ profile: { phone: "call me maybe" } }).profile.phone, "");
+});
+
+test("an import fills only what the saved profile leaves empty", () => {
+  const incoming = {
+    ...emptyProfile,
+    name: "Mara Linden",
+    phone: "+49 170 1",
+    hobbies: ["Segeln"],
+    certificates: [{ name: "Scrum Master", issuer: "", year: "" }],
+  };
+  assert.deepEqual(Object.keys(profileFill(null, incoming)).sort(), [
+    "certificates",
+    "hobbies",
+    "name",
+    "phone",
+  ]);
+  const saved = { ...emptyProfile, name: "Mara", hobbies: ["Laufen"], certificates: [] };
+  assert.deepEqual(Object.keys(profileFill(saved, incoming)).sort(), ["certificates", "phone"]);
 });
