@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
+  CV_LANGUAGES,
+  CV_LAYOUTS,
+  CV_THEME_IDS,
+  CV_THEMES,
+  cssColor,
+  DEFAULT_CV_DESIGN,
+  PHOTO_SHAPES,
+  type CvDesign,
+  type CvLanguage,
   defaultSkills,
   FIT_LIMITS,
   formatYears,
@@ -17,6 +26,8 @@ import {
   cvMarkdown,
   cvPdf,
   download,
+  frameColor,
+  framedPhoto,
   type CvDocument,
 } from "../lib/cvDocument";
 import type { Preferences } from "../lib/preferences";
@@ -30,6 +41,9 @@ type Draft = {
   imageId: string | null;
   /** null: the recommended selection (project-relevant first, then most practised). */
   skills: string[] | null;
+  /** null: the interface language. */
+  language: CvLanguage | null;
+  design: CvDesign;
 };
 
 /** The saved draft, or a first one: profile summary, references the fit supports, first photo. */
@@ -43,6 +57,8 @@ function initialDraft(project: Project, experience: Experience): Draft {
       referenceIds: project.cv.referenceIds.filter((id) => known.has(id)),
       imageId: project.cv.imageId && photos.has(project.cv.imageId) ? project.cv.imageId : null,
       skills: project.cv.skills,
+      language: project.cv.language,
+      design: project.cv.design,
     };
   }
   const supporting = project.fit
@@ -56,6 +72,8 @@ function initialDraft(project: Project, experience: Experience): Draft {
     ).slice(0, FIT_LIMITS.cvReferences),
     imageId: firstPhoto,
     skills: null,
+    language: null,
+    design: DEFAULT_CV_DESIGN,
   };
 }
 
@@ -78,6 +96,8 @@ export function ProjectCvPage({
     referenceIds: [],
     imageId: null,
     skills: null,
+    language: null,
+    design: DEFAULT_CV_DESIGN,
   });
   const [saved, setSaved] = useState<Draft | null>(null);
   const [error, setError] = useState("");
@@ -140,6 +160,7 @@ export function ProjectCvPage({
   const recommended = defaultSkills(rows, project);
   const skills = draft.skills ?? recommended;
   const photo = experience.images.find((image) => image.id === draft.imageId)?.dataUrl ?? null;
+  const cvLanguage: CvLanguage = draft.language ?? locale;
   const document = cvDocument({
     profile: experience.profile,
     summary: draft.summary,
@@ -147,9 +168,12 @@ export function ProjectCvPage({
     allReferences: references,
     skills,
     photo,
-    copy,
-    locale,
+    language: cvLanguage,
+    design: draft.design,
   });
+  const setDesign = (change: Partial<CvDesign>) =>
+    setDraft((current) => ({ ...current, design: { ...current.design, ...change } }));
+
   const dirty = JSON.stringify(saved) !== JSON.stringify(draft);
   const fileName = cvFileName(document, project.company || project.title);
 
@@ -242,6 +266,96 @@ export function ProjectCvPage({
       <div className="cv-grid">
         <section className="card" aria-labelledby="cv-content-title">
           <h2 id="cv-content-title">{text.contentTitle}</h2>
+
+          <h3 className="section-title">{text.designTitle}</h3>
+          <div className="design-grid">
+            <label>
+              {text.languageLabel}
+              <select
+                className="select-field"
+                value={cvLanguage}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    language: event.target.value as CvLanguage,
+                  }))
+                }
+              >
+                {CV_LANGUAGES.map((option) => (
+                  <option key={option} value={option}>
+                    {text.languageNames[option]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <fieldset className="choice-row">
+              <legend>{text.themeLabel}</legend>
+              {CV_THEME_IDS.map((theme) => (
+                <label
+                  key={theme}
+                  className={`swatch ${draft.design.theme === theme ? "selected" : ""}`}
+                  title={text.themes[theme]}
+                >
+                  <input
+                    type="radio"
+                    className="visually-hidden"
+                    name="cv-theme"
+                    checked={draft.design.theme === theme}
+                    onChange={() => setDesign({ theme })}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="swatch-color"
+                    style={{
+                      background: `linear-gradient(135deg, ${cssColor(CV_THEMES[theme].panel)} 0 55%, ${cssColor(CV_THEMES[theme].accent)} 55% 100%)`,
+                    }}
+                  />
+                  <span className="swatch-name">{text.themes[theme]}</span>
+                </label>
+              ))}
+            </fieldset>
+            <fieldset className="choice-row">
+              <legend>{text.layoutLabel}</legend>
+              {CV_LAYOUTS.map((layout) => (
+                <label
+                  key={layout}
+                  className={`layout-choice ${draft.design.layout === layout ? "selected" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    className="visually-hidden"
+                    name="cv-layout"
+                    checked={draft.design.layout === layout}
+                    onChange={() => setDesign({ layout })}
+                  />
+                  <span className={`layout-thumb thumb-${layout}`} aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <span>{text.layouts[layout]}</span>
+                </label>
+              ))}
+            </fieldset>
+            <fieldset className="choice-row">
+              <legend>{text.shapeLabel}</legend>
+              {PHOTO_SHAPES.map((shape) => (
+                <label
+                  key={shape}
+                  className={`chip ${draft.design.photoShape === shape ? "selected" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    className="visually-hidden"
+                    name="cv-shape"
+                    checked={draft.design.photoShape === shape}
+                    onChange={() => setDesign({ photoShape: shape })}
+                  />
+                  {text.shapes[shape]}
+                </label>
+              ))}
+            </fieldset>
+          </div>
 
           <h3 className="section-title">{text.photoTitle}</h3>
           {experience.images.length === 0 ? (
@@ -427,100 +541,319 @@ export function ProjectCvPage({
   );
 }
 
-/** The same layout as the PDF: dark sidebar beside the main column. */
+/** The framed photo as the PDF draws it, recomputed when photo, frame or theme change. */
+function useFramedPhoto(cv: CvDocument): string | null {
+  const [framed, setFramed] = useState<string | null>(null);
+  const frame = cssColor(frameColor(cv));
+  useEffect(() => {
+    let active = true;
+    if (!cv.photo) {
+      setFramed(null);
+      return;
+    }
+    void framedPhoto(cv.photo, cv.design.photoShape, frameColor(cv), 360).then(
+      (url) => active && setFramed(url),
+    );
+    return () => {
+      active = false;
+    };
+  }, [cv.photo, cv.design.photoShape, frame]);
+  return framed;
+}
+
+/** The same layouts as the PDF, scaled to the preview column. */
 function CvPreview({ cv }: { cv: CvDocument }) {
+  const photo = useFramedPhoto(cv);
+  const layout = cv.design.layout;
+  const P = cv.palette;
+  const style = {
+    "--cv-panel": cssColor(P.panel),
+    "--cv-panel-text": cssColor(P.panelText),
+    "--cv-panel-muted": cssColor(P.panelMuted),
+    "--cv-panel-track": cssColor(P.panelTrack),
+    "--cv-accent": cssColor(P.accent),
+    "--cv-tint": cssColor(P.tint),
+    "--cv-track": cssColor(P.track),
+  } as CSSProperties;
   const longest = Math.max(...cv.matrix.map((row) => row.years), 1);
-  return (
-    <article className="cv-sheet">
-      <aside className="cv-side">
-        {cv.photo && <img className="cv-photo" src={cv.photo} alt="" />}
-        {cv.contact.length > 0 && (
-          <section>
-            <h4>{cv.labels.contact}</h4>
-            {cv.contact.map((entry) => (
-              <p key={entry.kind} className="cv-contact">
-                {entry.value}
-              </p>
-            ))}
-          </section>
-        )}
-        {cv.matrix.length > 0 && (
-          <section>
-            <h4>{cv.labels.matrix}</h4>
-            {cv.matrix.map((row) => (
-              <div key={row.name} className="cv-skill" title={row.detail}>
-                <div>
-                  <strong>{row.name}</strong>
-                  <span>{row.yearsLabel}</span>
-                </div>
+  const share = (years: number) => `${Math.max(4, (years / longest) * 100)}%`;
+  const dated = layout === "classic";
+
+  const identity = (
+    <div className="cv-identity">
+      <h3 className="cv-name">{cv.name || "CV"}</h3>
+      {cv.headline && <p className="cv-headline">{cv.headline}</p>}
+      {cv.experience && <span className="cv-pill">{cv.experience}</span>}
+    </div>
+  );
+  const contactLines = cv.contact.map((entry) => (
+    <p key={entry.kind} className="cv-contact">
+      {entry.value}
+    </p>
+  ));
+  const contact = cv.contact.length > 0 && (
+    <section>
+      <h4>{cv.labels.contact}</h4>
+      {contactLines}
+    </section>
+  );
+  const matrixBars = cv.matrix.length > 0 && (
+    <section>
+      <h4>{cv.labels.matrix}</h4>
+      <div className={layout === "modern" ? "cv-skill-grid" : undefined}>
+        {cv.matrix.map((row) => (
+          <div key={row.name} className="cv-skill">
+            <div>
+              <strong>{row.name}</strong>
+              <span>{row.yearsLabel}</span>
+            </div>
+            <span className="cv-bar">
+              <span style={{ width: share(row.years) }} />
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+  const matrixTable = cv.matrix.length > 0 && (
+    <section>
+      <h4>{cv.labels.matrix}</h4>
+      <table className="cv-table">
+        <thead>
+          <tr>
+            <th>{cv.labels.skillColumn}</th>
+            <th aria-hidden="true" />
+            <th>{cv.labels.yearsColumn}</th>
+            <th>{cv.labels.projectsColumn}</th>
+            <th>{cv.labels.lastColumn}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cv.matrix.map((row) => (
+            <tr key={row.name}>
+              <td>
+                <strong>{row.name}</strong>
+              </td>
+              <td>
                 <span className="cv-bar">
-                  <span style={{ width: `${Math.max(4, (row.years / longest) * 100)}%` }} />
+                  <span style={{ width: share(row.years) }} />
                 </span>
-              </div>
-            ))}
-          </section>
-        )}
-        {cv.certificates.length > 0 && (
-          <section>
-            <h4>{cv.labels.certificates}</h4>
-            {cv.certificates.map((certificate) => (
-              <p key={certificate.name} className="cv-certificate">
-                <strong>{certificate.name}</strong>
-                {certificate.detail && <span>{certificate.detail}</span>}
+              </td>
+              <td>{row.yearsLabel}</td>
+              <td>{row.projects}</td>
+              <td>{row.lastUsed}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+  const summary = cv.summary && (
+    <section>
+      <h4>{cv.labels.profile}</h4>
+      <p className="cv-text">{cv.summary}</p>
+    </section>
+  );
+  const roles = cv.roles.length > 0 && (
+    <section>
+      <h4>{cv.labels.roles}</h4>
+      {cv.roles.map((role) => (
+        <p key={role.name} className="cv-role">
+          <span>{role.name}</span>
+          <strong>{role.yearsLabel}</strong>
+        </p>
+      ))}
+    </section>
+  );
+  const projects = cv.references.length > 0 && (
+    <section>
+      <h4>{cv.labels.projects}</h4>
+      {cv.references.map((reference, index) => (
+        <div
+          key={`${reference.organization}-${index}`}
+          className={dated ? "cv-entry dated" : "cv-entry"}
+        >
+          {dated && <span className="cv-date">{reference.period}</span>}
+          <div>
+            <div className="cv-entry-head">
+              <strong>{reference.organization}</strong>
+              {!dated && <span>{reference.period}</span>}
+            </div>
+            <p className="cv-entry-role">{reference.role}</p>
+            <p className="cv-text">{reference.contribution}</p>
+            {reference.skills.length > 0 && (
+              <p className="cv-tags">
+                {reference.skills.map((skill) => (
+                  <span key={skill}>{skill}</span>
+                ))}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+  const education = cv.education.length > 0 && (
+    <section>
+      <h4>{cv.labels.education}</h4>
+      {cv.education.map((entry) => (
+        <div
+          key={`${entry.degree}-${entry.institution}`}
+          className={dated ? "cv-entry dated plain" : "cv-education"}
+        >
+          {dated && <span className="cv-date">{entry.period}</span>}
+          <div>
+            <strong>{entry.degree}</strong>
+            <span className="cv-muted">
+              {[entry.institution, dated ? "" : entry.period].filter(Boolean).join(" · ")}
+            </span>
+            {entry.note && <span className="cv-muted">{entry.note}</span>}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+  const languages =
+    cv.languages.length > 0 &&
+    (dated ? (
+      <section>
+        <h4>{cv.labels.languages}</h4>
+        <p>{cv.languages.map((entry) => `${entry.name} – ${entry.level}`).join(" · ")}</p>
+      </section>
+    ) : (
+      <section>
+        <h4>{cv.labels.languages}</h4>
+        {cv.languages.map((entry) => (
+          <div key={entry.name} className="cv-language">
+            <div>
+              <strong>{entry.name}</strong>
+              <span className="cv-dots" aria-label={entry.level}>
+                {Array.from({ length: 5 }, (_, dot) => (
+                  <i key={dot} className={dot < entry.dots ? "on" : ""} />
+                ))}
+              </span>
+            </div>
+            <span className="cv-muted">{entry.level}</span>
+          </div>
+        ))}
+      </section>
+    ));
+  const certificates = cv.certificates.length > 0 && (
+    <section>
+      <h4>{cv.labels.certificates}</h4>
+      {cv.certificates.map((certificate) => (
+        <p key={certificate.name} className="cv-certificate">
+          <strong>{certificate.name}</strong>
+          {certificate.detail && <span className="cv-muted">{certificate.detail}</span>}
+        </p>
+      ))}
+    </section>
+  );
+  const hobbies = cv.hobbies.length > 0 && (
+    <section>
+      <h4>{cv.labels.hobbies}</h4>
+      <p>{cv.hobbies.join(" · ")}</p>
+    </section>
+  );
+  const image = photo && <img className="cv-photo" src={photo} alt="" />;
+
+  if (layout === "sidebar" || layout === "sidebarRight") {
+    return (
+      <article className={`cv-sheet layout-${layout}`} style={style}>
+        <aside className="cv-side cv-panel">
+          {image}
+          {contact}
+          {matrixBars}
+          {languages}
+          {certificates}
+          {hobbies}
+        </aside>
+        <div className="cv-main">
+          {identity}
+          {summary}
+          {roles}
+          {projects}
+          {education}
+        </div>
+      </article>
+    );
+  }
+  if (layout === "header") {
+    return (
+      <article className="cv-sheet layout-header" style={style}>
+        <header className="cv-band cv-panel">
+          {image}
+          {identity}
+          <div className="cv-band-contact">{contactLines}</div>
+        </header>
+        <div className="cv-columns">
+          <div className="cv-main">
+            {summary}
+            {roles}
+            {projects}
+          </div>
+          <aside className="cv-aside">
+            {matrixBars}
+            {languages}
+            {education}
+            {certificates}
+            {hobbies}
+          </aside>
+        </div>
+      </article>
+    );
+  }
+  if (layout === "classic") {
+    return (
+      <article className="cv-sheet layout-classic" style={style}>
+        <header className="cv-head">
+          <div>
+            {identity}
+            {cv.contact.map((entry) => (
+              <p key={entry.kind} className="cv-muted cv-contact">
+                {entry.value.replace(/\n/g, ", ")}
               </p>
             ))}
-          </section>
-        )}
-        {cv.hobbies.length > 0 && (
-          <section>
-            <h4>{cv.labels.hobbies}</h4>
-            <p className="cv-contact">{cv.hobbies.join(" · ")}</p>
-          </section>
-        )}
-      </aside>
+          </div>
+          {image}
+        </header>
+        <div className="cv-main">
+          {summary}
+          {matrixTable}
+          {roles}
+          {projects}
+          {education}
+          {languages}
+          {certificates}
+          {hobbies}
+        </div>
+      </article>
+    );
+  }
+  return (
+    <article className="cv-sheet layout-modern" style={style}>
+      <header className="cv-head">
+        <div>
+          {identity}
+          <p className="cv-muted cv-contact-line">
+            {cv.contact.map((entry) => entry.value.replace(/\n/g, ", ")).join("  ·  ")}
+          </p>
+        </div>
+        {image}
+      </header>
       <div className="cv-main">
-        <h3 className="cv-name">{cv.name || "CV"}</h3>
-        {cv.headline && <p className="cv-headline">{cv.headline}</p>}
-        {cv.experience && <span className="cv-pill">{cv.experience}</span>}
-        {cv.summary && (
-          <section>
-            <h4>{cv.labels.profile}</h4>
-            <p className="cv-text">{cv.summary}</p>
-          </section>
-        )}
-        {cv.roles.length > 0 && (
-          <section>
-            <h4>{cv.labels.roles}</h4>
-            {cv.roles.map((role) => (
-              <p key={role.name} className="cv-role">
-                <span>{role.name}</span>
-                <strong>{role.yearsLabel}</strong>
-              </p>
-            ))}
-          </section>
-        )}
-        {cv.references.length > 0 && (
-          <section>
-            <h4>{cv.labels.projects}</h4>
-            {cv.references.map((reference, index) => (
-              <div key={`${reference.organization}-${index}`} className="cv-entry">
-                <div className="cv-entry-head">
-                  <strong>{reference.organization}</strong>
-                  <span>{reference.period}</span>
-                </div>
-                <p className="cv-entry-role">{reference.role}</p>
-                <p className="cv-text">{reference.contribution}</p>
-                {reference.skills.length > 0 && (
-                  <p className="cv-tags">
-                    {reference.skills.map((skill) => (
-                      <span key={skill}>{skill}</span>
-                    ))}
-                  </p>
-                )}
-              </div>
-            ))}
-          </section>
-        )}
+        {summary}
+        {matrixBars}
+      </div>
+      <div className="cv-columns">
+        <div className="cv-main">{projects}</div>
+        <aside className="cv-aside">
+          {roles}
+          {education}
+          {languages}
+          {certificates}
+          {hobbies}
+        </aside>
       </div>
     </article>
   );

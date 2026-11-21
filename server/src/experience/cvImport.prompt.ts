@@ -26,6 +26,28 @@ export const CV_SCHEMA = {
             required: ["name", "issuer", "year"],
           },
         },
+        languages: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: { name: { type: "string" }, level: { type: "string" } },
+            required: ["name", "level"],
+          },
+        },
+        education: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              degree: { type: "string" },
+              institution: { type: "string" },
+              start: { type: "string" },
+              end: { type: "string" },
+              note: { type: "string" },
+            },
+            required: ["degree", "institution", "start", "end", "note"],
+          },
+        },
         hobbies: { type: "array", items: { type: "string" } },
       },
       required: [
@@ -38,6 +60,8 @@ export const CV_SCHEMA = {
         "website",
         "summary",
         "certificates",
+        "languages",
+        "education",
         "hobbies",
       ],
     },
@@ -73,6 +97,8 @@ Rules:
 - profile.address: the postal address in one line (street, postal code and city), or "".
 - profile.website: a personal website, portfolio or profile link, or "".
 - profile.certificates: certifications with issuer and year ("YYYY") where stated. Not degrees.
+- profile.languages: spoken languages with their level as written (for example "C1", "Muttersprache", "fluent").
+- profile.education: degrees, apprenticeships and schools: degree, institution, start and end year ("YYYY" or ""), and a short note such as the thesis or focus, or "".
 - profile.hobbies: hobbies and interests, short entries.
 - profile.summary: the CV's own profile or summary text, at most three sentences.
 - references: one entry per project, client engagement or position, most recent first. Do not include education, certificates, languages or hobbies.

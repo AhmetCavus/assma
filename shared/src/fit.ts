@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { identifier } from "./account.js";
+import { CV_LANGUAGES, cvDesignSchema, DEFAULT_CV_DESIGN } from "./cvDesign.js";
 
 /**
  * The experience fit of a project and the tailored CV drafted for it.
@@ -185,6 +186,9 @@ export function normaliseFindings(
 
 export const cvDraftSchema = z.object({
   summary: z.string().trim().max(FIT_LIMITS.summary).default(""),
+  /** Language of headings, dates and units; null follows the interface language. */
+  language: z.enum(CV_LANGUAGES).nullable().default(null),
+  design: cvDesignSchema.default(DEFAULT_CV_DESIGN),
   /** The photo on this CV; null for none. */
   imageId: identifier.nullable().default(null),
   /** Skills shown in the matrix, in order; null lets assma choose (project-relevant first). */

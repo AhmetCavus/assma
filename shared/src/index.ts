@@ -4,5 +4,6 @@ export * from "./cvImport.js";
 export * from "./projects.js";
 export * from "./fit.js";
 export * from "./skills.js";
+export * from "./cvDesign.js";
 export * from "./locales/index.js";
 export * from "./api/client.js";

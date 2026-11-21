@@ -65,14 +65,24 @@ ordered by weight. The person picks a photo, edits the short profile, chooses th
 the matrix and selects and orders references, and saves the draft on the project.
 
 The Experience page holds what a full CV needs: contact details (address, phone, email,
-website), certificates, hobbies and up to six profile photos. Photos are cropped to a
+website), languages with their level (native, C2–A1), education, certificates, hobbies and
+up to six profile photos. Photos are cropped to a
 square JPEG in the browser and stored privately (`AssmaProfileImage`); the CV import also
-reads phone, address, website, certificates and hobbies.
+reads phone, address, website, languages (levels such as "Muttersprache" or "fluent" map to
+CEFR), education, certificates and hobbies.
 
 The **skill matrix** is computed from the project references (`shared/src/skills.ts`): years
 per technology and per role are the union of the project periods, so overlapping projects
 count once, plus the number of projects and the year last used; the total experience is the
 union of all periods. Skills the project asks for come first.
+
+Each CV draft has its own **language** (German or English, for headings, dates and units,
+independent of the interface) and **design** (`shared/src/cvDesign.ts`): six colour themes
+(Aubergine, Ocean, Forest, Graphite, Bordeaux, Sand), five layouts (sidebar left, the
+original and default; sidebar right; header band; classic with a skill table and dates on
+the left; modern with a two-column skill grid) and five photo frames (circle, rounded,
+square, hexagon, double ring). Frames are drawn on a canvas as a transparent PNG, so the
+preview and the PDF show the same image.
 
 The preview, the Markdown and the PDF render the same document. The PDF (pdf-lib, generated
 in the browser) has a dark sidebar with the round photo, contact, skill matrix with bars,

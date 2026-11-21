@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   certificateSchema,
+  CV_LAYOUTS,
+  CV_THEME_IDS,
+  cvDesignSchema,
+  educationSchema,
+  sortEducation,
   coveredMonths,
   defaultSkills,
   formatYears,
@@ -114,4 +119,33 @@ test("phone, website and certificates are validated", () => {
   assert.equal(certificateSchema.safeParse({ name: "Scrum Master", year: "2023" }).success, true);
   assert.equal(certificateSchema.safeParse({ name: "", year: "2023" }).success, false);
   assert.equal(certificateSchema.safeParse({ name: "X", year: "23" }).success, false);
+});
+
+test("education needs a degree and an end not before its start; newest first", () => {
+  assert.equal(
+    educationSchema.safeParse({ degree: "M.Sc.", start: "2015", end: "2013" }).success,
+    false,
+  );
+  assert.equal(educationSchema.safeParse({ degree: "", start: "2013" }).success, false);
+  assert.deepEqual(
+    sortEducation([
+      { start: "2010", end: "2013" },
+      { start: "2013", end: "" },
+      { start: "2013", end: "2015" },
+    ]).map((entry) => entry.end),
+    ["", "2015", "2013"],
+  );
+});
+
+test("the design keeps the original layout as default and rejects unknown options", () => {
+  assert.equal(CV_LAYOUTS.length, 5);
+  assert.equal(CV_LAYOUTS[0], "sidebar");
+  assert.deepEqual(cvDesignSchema.parse({}), {
+    theme: "aubergine",
+    layout: "sidebar",
+    photoShape: "circle",
+  });
+  assert.ok(CV_THEME_IDS.includes("sand"));
+  assert.equal(cvDesignSchema.safeParse({ layout: "fancy" }).success, false);
+  assert.equal(cvDesignSchema.safeParse({ photoShape: "star" }).success, false);
 });

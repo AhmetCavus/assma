@@ -20,6 +20,12 @@ export const EXPERIENCE_LIMITS = {
   hobby: 60,
   hobbies: 20,
   images: 6,
+  language: 60,
+  languages: 12,
+  degree: 120,
+  institution: 120,
+  educationNote: 200,
+  education: 12,
   /** A square JPEG, resized in the browser; base64 makes it about a third larger. */
   imageBytes: 600 * 1024,
   organization: 120,
@@ -49,6 +55,43 @@ export const certificateSchema = z.object({
 });
 export type Certificate = z.infer<typeof certificateSchema>;
 
+/** From native speaker down to beginner, in CV order. */
+export const LANGUAGE_LEVELS = ["native", "C2", "C1", "B2", "B1", "A2", "A1"] as const;
+export const languageLevelSchema = z.enum(LANGUAGE_LEVELS);
+export type LanguageLevel = z.infer<typeof languageLevelSchema>;
+
+export const languageSchema = z.object({
+  name: required(EXPERIENCE_LIMITS.language),
+  level: languageLevelSchema.default("B2"),
+});
+export type Language = z.infer<typeof languageSchema>;
+
+const year = z.union([z.literal(""), z.string().regex(/^(19[5-9]\d|20\d\d)$/, "invalid_year")]);
+
+export const educationSchema = z
+  .object({
+    degree: required(EXPERIENCE_LIMITS.degree),
+    institution: text(EXPERIENCE_LIMITS.institution).default(""),
+    start: year.default(""),
+    /** "" while ongoing or unknown. */
+    end: year.default(""),
+    note: text(EXPERIENCE_LIMITS.educationNote).default(""),
+  })
+  .refine((entry) => !entry.start || !entry.end || entry.end >= entry.start, {
+    message: "end_before_start",
+    path: ["end"],
+  });
+export type Education = z.infer<typeof educationSchema>;
+
+/** Newest first: by end year (ongoing first), then start year. */
+export function sortEducation<T extends Pick<Education, "start" | "end">>(
+  entries: readonly T[],
+): T[] {
+  return [...entries].sort(
+    (a, b) => (b.end || "9999").localeCompare(a.end || "9999") || b.start.localeCompare(a.start),
+  );
+}
+
 const website = z.union([
   z.literal(""),
   z
@@ -75,6 +118,8 @@ export const profileInputSchema = z.object({
   website: website.default(""),
   summary: text(EXPERIENCE_LIMITS.summary).default(""),
   certificates: z.array(certificateSchema).max(EXPERIENCE_LIMITS.certificates).default([]),
+  languages: z.array(languageSchema).max(EXPERIENCE_LIMITS.languages).default([]),
+  education: z.array(educationSchema).max(EXPERIENCE_LIMITS.education).default([]),
   hobbies: z
     .array(z.string().max(EXPERIENCE_LIMITS.hobby))
     .max(EXPERIENCE_LIMITS.hobbies * 2)

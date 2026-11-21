@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   formatPeriod,
+  LANGUAGE_LEVELS,
   parseSkills,
+  sortEducation,
   profileInputSchema,
   referenceInputSchema,
   referenceLabel,
@@ -11,6 +13,7 @@ import {
   type Experience,
   type ExperienceProfile,
   type ExperienceReference,
+  type LanguageLevel,
   type ProfileImage,
   type ReferenceInput,
 } from "@assma/shared";
@@ -383,6 +386,37 @@ function ProfileSummary({
           </ul>
         </>
       )}
+      {profile.languages.length > 0 && (
+        <>
+          <h3 className="profile-subtitle">{text.languagesTitle}</h3>
+          <ul className="profile-list">
+            {profile.languages.map((language) => (
+              <li key={language.name}>
+                {language.name} <span className="muted">· {text.levels[language.level]}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {profile.education.length > 0 && (
+        <>
+          <h3 className="profile-subtitle">{text.educationTitle}</h3>
+          <ul className="profile-list">
+            {sortEducation(profile.education).map((entry) => (
+              <li key={`${entry.degree}-${entry.institution}`}>
+                {entry.degree}
+                <span className="muted">
+                  {" "}
+                  ·{" "}
+                  {[entry.institution, [entry.start, entry.end].filter(Boolean).join("–")]
+                    .filter(Boolean)
+                    .join(", ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {profile.hobbies.length > 0 && (
         <>
           <h3 className="profile-subtitle">{text.hobbies}</h3>
@@ -398,6 +432,24 @@ function ProfileSummary({
 }
 
 type CertificateRow = { name: string; issuer: string; year: string };
+type LanguageRow = { name: string; level: LanguageLevel };
+type EducationRow = {
+  degree: string;
+  institution: string;
+  start: string;
+  end: string;
+  note: string;
+};
+
+/** Updates one field of one row in a list of rows. */
+function rowSetter<T>(set: (update: (rows: T[]) => T[]) => void) {
+  return (index: number, field: keyof T) => (event: { target: { value: string } }) =>
+    set((rows) =>
+      rows.map((row, position) =>
+        position === index ? { ...row, [field]: event.target.value } : row,
+      ),
+    );
+}
 
 function ProfileForm({
   initial,
@@ -416,6 +468,8 @@ function ProfileForm({
   const [values, setValues] = useState(initial);
   const [hobbies, setHobbies] = useState(initial.hobbies.join(", "));
   const [certificates, setCertificates] = useState<CertificateRow[]>(initial.certificates);
+  const [languages, setLanguages] = useState<LanguageRow[]>(initial.languages);
+  const [education, setEducation] = useState<EducationRow[]>(initial.education);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
   const set = (field: keyof ExperienceProfile) => (event: { target: { value: string } }) =>
@@ -435,6 +489,11 @@ function ProfileForm({
       // Rows left completely empty are dropped instead of failing validation.
       certificates: certificates.filter(
         (row) => row.name.trim() || row.issuer.trim() || row.year.trim(),
+      ),
+      languages: languages.filter((row) => row.name.trim()),
+      education: education.filter(
+        (row) =>
+          row.degree.trim() || row.institution.trim() || row.start || row.end || row.note.trim(),
       ),
     });
     if (!parsed.success) {
@@ -574,6 +633,131 @@ function ProfileForm({
         >
           <span aria-hidden="true">+</span>
           {text.addCertificate}
+        </button>
+      </fieldset>
+      <fieldset className="certificate-rows">
+        <legend>{text.languagesTitle}</legend>
+        {languages.map((row, index) => (
+          <div key={index} className="language-row">
+            <input
+              aria-label={text.languageName}
+              placeholder={text.languageName}
+              value={row.name}
+              onChange={rowSetter(setLanguages)(index, "name")}
+              maxLength={60}
+            />
+            <select
+              aria-label={text.languageLevel}
+              value={row.level}
+              onChange={rowSetter(setLanguages)(index, "level")}
+            >
+              {LANGUAGE_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {text.levels[level]}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="icon-button small-button"
+              onClick={() =>
+                setLanguages((current) => current.filter((_, position) => position !== index))
+              }
+              aria-label={text.removeLanguage(row.name)}
+              title={text.removeLanguage(row.name)}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {errors.languages && (
+          <small className="field-error" role="alert">
+            {errors.languages}
+          </small>
+        )}
+        <button
+          type="button"
+          className="pill"
+          onClick={() => setLanguages((current) => [...current, { name: "", level: "B2" }])}
+          disabled={languages.length >= 12}
+        >
+          <span aria-hidden="true">+</span>
+          {text.addLanguage}
+        </button>
+      </fieldset>
+      <fieldset className="certificate-rows">
+        <legend>{text.educationTitle}</legend>
+        {education.map((row, index) => (
+          <div key={index} className="education-row">
+            <input
+              aria-label={text.degree}
+              placeholder={text.degree}
+              value={row.degree}
+              onChange={rowSetter(setEducation)(index, "degree")}
+              maxLength={120}
+            />
+            <input
+              aria-label={text.institution}
+              placeholder={text.institution}
+              value={row.institution}
+              onChange={rowSetter(setEducation)(index, "institution")}
+              maxLength={120}
+            />
+            <input
+              aria-label={text.educationStart}
+              placeholder={text.educationStart}
+              value={row.start}
+              onChange={rowSetter(setEducation)(index, "start")}
+              inputMode="numeric"
+              maxLength={4}
+            />
+            <input
+              aria-label={text.educationEnd}
+              placeholder={text.educationEnd}
+              value={row.end}
+              onChange={rowSetter(setEducation)(index, "end")}
+              inputMode="numeric"
+              maxLength={4}
+            />
+            <input
+              className="education-note"
+              aria-label={text.educationNote}
+              placeholder={text.educationNote}
+              value={row.note}
+              onChange={rowSetter(setEducation)(index, "note")}
+              maxLength={200}
+            />
+            <button
+              type="button"
+              className="icon-button small-button"
+              onClick={() =>
+                setEducation((current) => current.filter((_, position) => position !== index))
+              }
+              aria-label={text.removeEducation(row.degree)}
+              title={text.removeEducation(row.degree)}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {errors.education && (
+          <small className="field-error" role="alert">
+            {errors.education}
+          </small>
+        )}
+        <button
+          type="button"
+          className="pill"
+          onClick={() =>
+            setEducation((current) => [
+              ...current,
+              { degree: "", institution: "", start: "", end: "", note: "" },
+            ])
+          }
+          disabled={education.length >= 12}
+        >
+          <span aria-hidden="true">+</span>
+          {text.addEducation}
         </button>
       </fieldset>
       <Field label={text.hobbies} hint={text.hobbiesHint} error={errors.hobbies}>

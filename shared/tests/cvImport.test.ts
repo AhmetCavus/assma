@@ -7,6 +7,7 @@ import {
   isKnownReference,
   mergeSuggestions,
   normaliseSuggestions,
+  readLanguageLevel,
   profileFill,
   profileInputSchema,
   readMonth,
@@ -221,4 +222,62 @@ test("an import fills only what the saved profile leaves empty", () => {
   ]);
   const saved = { ...emptyProfile, name: "Mara", hobbies: ["Laufen"], certificates: [] };
   assert.deepEqual(Object.keys(profileFill(saved, incoming)).sort(), ["certificates", "phone"]);
+});
+
+test("language levels are read the way CVs write them", () => {
+  assert.equal(readLanguageLevel("Muttersprache"), "native");
+  assert.equal(readLanguageLevel("verhandlungssicher (C1)"), "C1");
+  assert.equal(readLanguageLevel("fluent"), "C1");
+  assert.equal(readLanguageLevel("B2"), "B2");
+  assert.equal(readLanguageLevel("Grundkenntnisse"), "A2");
+  assert.equal(readLanguageLevel(""), "B2");
+});
+
+test("languages and education are read from the CV", () => {
+  const { profile } = normaliseSuggestions({
+    profile: {
+      languages: [
+        { name: "Deutsch", level: "Muttersprache" },
+        "Englisch (C1)",
+        { name: "deutsch", level: "A1" },
+      ],
+      education: [
+        {
+          degree: "M.Sc. Informatik",
+          institution: "Universität Hamburg",
+          start: "2013",
+          end: "2015",
+          note: "",
+        },
+        {
+          degree: "B.Sc. Informatik",
+          institution: "HS Düsseldorf",
+          start: "2019",
+          end: "2015",
+          note: "Thesis: Offline sync",
+        },
+        { degree: "", institution: "Nowhere" },
+      ],
+    },
+  });
+  assert.deepEqual(profile.languages, [
+    { name: "Deutsch", level: "native" },
+    { name: "Englisch", level: "C1" },
+  ]);
+  assert.deepEqual(profile.education, [
+    {
+      degree: "M.Sc. Informatik",
+      institution: "Universität Hamburg",
+      start: "2013",
+      end: "2015",
+      note: "",
+    },
+    {
+      degree: "B.Sc. Informatik",
+      institution: "HS Düsseldorf",
+      start: "2015",
+      end: "2019",
+      note: "Thesis: Offline sync",
+    },
+  ]);
 });

@@ -12,6 +12,7 @@ import {
   type CvImportJob,
   type Experience,
   type ExperienceProfile,
+  type Copy,
   type CvSuggestions,
   type ReferenceSuggestion,
 } from "@assma/shared";
@@ -36,10 +37,44 @@ const PROFILE_FIELDS = [
   "website",
   "summary",
   "certificates",
+  "languages",
+  "education",
   "hobbies",
 ] as const;
 
 type ProfileSuggestion = CvSuggestions["profile"];
+
+/** Label and readable value of one profile field in the import review. */
+function describeField(
+  field: (typeof PROFILE_FIELDS)[number],
+  profile: Partial<ProfileSuggestion>,
+  copy: Copy,
+): { label: string; shown: string } {
+  const text = copy.experience;
+  switch (field) {
+    case "certificates":
+      return {
+        label: text.certificatesTitle,
+        shown: (profile.certificates ?? []).map((certificate) => certificate.name).join(", "),
+      };
+    case "languages":
+      return {
+        label: text.languagesTitle,
+        shown: (profile.languages ?? [])
+          .map((language) => `${language.name} (${text.levels[language.level]})`)
+          .join(", "),
+      };
+    case "education":
+      return {
+        label: text.educationTitle,
+        shown: (profile.education ?? []).map((entry) => entry.degree).join(", "),
+      };
+    case "hobbies":
+      return { label: text.hobbies, shown: (profile.hobbies ?? []).join(", ") };
+    default:
+      return { label: text[field], shown: profile[field] ?? "" };
+  }
+}
 
 // The running job survives a reload in this tab; storage may be unavailable.
 function remember(value: { id: string; text: string } | null): void {
@@ -328,18 +363,7 @@ export function CvImportPage({
                       {PROFILE_FIELDS.filter((field) => profile[field] !== undefined).map(
                         (field) => {
                           const value = profile[field]!;
-                          const shown =
-                            field === "certificates"
-                              ? profile
-                                  .certificates!.map((certificate) => certificate.name)
-                                  .join(", ")
-                              : Array.isArray(value)
-                                ? value.join(", ")
-                                : value;
-                          const label =
-                            field === "certificates"
-                              ? copy.experience.certificatesTitle
-                              : copy.experience[field];
+                          const { label, shown } = describeField(field, profile, copy);
                           return (
                             <span key={field} className="suggestion-detail">
                               {label}: {shown}

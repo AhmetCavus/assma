@@ -6,6 +6,10 @@ import {
   uniqueSkills,
   yearMonthSchema,
   type Certificate,
+  type Education,
+  type Language,
+  type LanguageLevel,
+  LANGUAGE_LEVELS,
   type ExperienceReference,
   type ReferenceInput,
   type YearMonth,
@@ -175,6 +179,8 @@ const rawSuggestions = z
         website: z.unknown(),
         summary: z.unknown(),
         certificates: z.unknown(),
+        languages: z.unknown(),
+        education: z.unknown(),
         hobbies: z.unknown(),
       })
       .partial()
@@ -241,6 +247,8 @@ export function normaliseSuggestions(raw: unknown): CvSuggestions {
       ),
       summary: clip(profile.summary, EXPERIENCE_LIMITS.summary),
       certificates: readCertificates(profile.certificates),
+      languages: readLanguages(profile.languages),
+      education: readEducation(profile.education),
       hobbies: Array.isArray(profile.hobbies)
         ? uniqueSkills(
             profile.hobbies
@@ -257,6 +265,97 @@ export function normaliseSuggestions(raw: unknown): CvSuggestions {
 function valid(schema: z.ZodTypeAny, value: string): string {
   const result = schema.safeParse(value);
   return result.success && typeof result.data === "string" ? result.data : "";
+}
+
+/** Maps how CVs write language levels onto CEFR; a level in the text wins. */
+export function readLanguageLevel(value: string): LanguageLevel {
+  const text = value.toLowerCase();
+  const cefr = /\b([abc][12])\b/.exec(text)?.[1]?.toUpperCase();
+  if (cefr && (LANGUAGE_LEVELS as readonly string[]).includes(cefr)) {
+    return cefr as LanguageLevel;
+  }
+  if (/mutter|native|erstsprache|first language|bilingual|zweisprachig/.test(text)) {
+    return "native";
+  }
+  if (
+    /verhandlungssicher|business|fluent|fließend|fliessend|sehr gut|excellent|proficient/.test(text)
+  ) {
+    return "C1";
+  }
+  if (/\bgut\b|good|intermediate|konversation/.test(text)) {
+    return "B1";
+  }
+  if (/grund|basic|elementar|elementary|beginner|anfänger/.test(text)) {
+    return "A2";
+  }
+  return "B2";
+}
+
+function readLanguages(value: unknown): Language[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const languages: Language[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    const record = (typeof item === "string" ? { name: item } : item) as Record<
+      string,
+      unknown
+    > | null;
+    let name = clip(record?.name, EXPERIENCE_LIMITS.language);
+    let levelText = clip(record?.level, 60);
+    // "Englisch (C1)" in one string.
+    const inline = /^(.+?)\s*[(:–-]\s*([^)]+)\)?$/.exec(name);
+    if (inline && !levelText) {
+      name = inline[1]!.trim();
+      levelText = inline[2]!.trim();
+    }
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    languages.push({ name, level: readLanguageLevel(levelText) });
+    if (languages.length >= EXPERIENCE_LIMITS.languages) {
+      break;
+    }
+  }
+  return languages;
+}
+
+function readEducation(value: unknown): Education[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const entries: Education[] = [];
+  const seen = new Set<string>();
+  const yearOf = (raw: unknown) => /(19[5-9]\d|20\d\d)/.exec(clip(raw, 40))?.[1] ?? "";
+  for (const item of value) {
+    const record = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+    const degree = clip(record.degree, EXPERIENCE_LIMITS.degree);
+    const institution = clip(record.institution, EXPERIENCE_LIMITS.institution);
+    const key = `${degree}|${institution}`.toLowerCase();
+    if (!degree || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    let start = yearOf(record.start);
+    let end = yearOf(record.end);
+    if (start && end && end < start) {
+      [start, end] = [end, start];
+    }
+    entries.push({
+      degree,
+      institution,
+      start,
+      end,
+      note: clip(record.note, EXPERIENCE_LIMITS.educationNote),
+    });
+    if (entries.length >= EXPERIENCE_LIMITS.education) {
+      break;
+    }
+  }
+  return entries;
 }
 
 function readCertificates(value: unknown): Certificate[] {
@@ -399,6 +498,8 @@ export function mergeSuggestions(list: readonly CvSuggestions[]): CvSuggestions 
     website: "",
     summary: "",
     certificates: [],
+    languages: [],
+    education: [],
     hobbies: [],
   };
   for (const suggestions of list) {
@@ -409,6 +510,8 @@ export function mergeSuggestions(list: readonly CvSuggestions[]): CvSuggestions 
       ...profile.certificates,
       ...suggestions.profile.certificates,
     ]);
+    profile.languages = readLanguages([...profile.languages, ...suggestions.profile.languages]);
+    profile.education = readEducation([...profile.education, ...suggestions.profile.education]);
     profile.hobbies = uniqueSkills([...profile.hobbies, ...suggestions.profile.hobbies]).slice(
       0,
       EXPERIENCE_LIMITS.hobbies,

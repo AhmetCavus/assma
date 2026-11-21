@@ -76,6 +76,8 @@ test("profile fields default to empty and the email must be an address or empty"
     website: "",
     summary: "",
     certificates: [],
+    languages: [],
+    education: [],
     hobbies: [],
   });
   assert.equal(profileInputSchema.safeParse({ email: "admin" }).success, false);

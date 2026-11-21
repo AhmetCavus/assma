@@ -1,5 +1,5 @@
 import { createCollection, Provider } from "yappio";
-import type { Certificate } from "@assma/shared";
+import type { Certificate, Education, Language } from "@assma/shared";
 
 /** One set of personal details per account; the CV header and sidebar use it. */
 export type ExperienceProfileRecord = {
@@ -13,6 +13,8 @@ export type ExperienceProfileRecord = {
   website: string;
   summary: string;
   certificates: Certificate[];
+  languages: Language[];
+  education: Education[];
   hobbies: string[];
   updatedAt: Date;
 };
@@ -28,6 +30,8 @@ export default createCollection<ExperienceProfileRecord>("AssmaExperienceProfile
   website: { ...Provider.String, default: "" },
   summary: { ...Provider.String, default: "" },
   certificates: Provider.Mixed,
+  languages: Provider.Mixed,
+  education: Provider.Mixed,
   hobbies: Provider.Mixed,
   updatedAt: { ...Provider.Date, required: true },
 });

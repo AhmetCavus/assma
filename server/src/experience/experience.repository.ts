@@ -28,6 +28,8 @@ function toProfile(record: ExperienceProfileRecord): ExperienceProfile {
     website: record.website ?? "",
     summary: record.summary ?? "",
     certificates: Array.isArray(record.certificates) ? record.certificates : [],
+    languages: Array.isArray(record.languages) ? record.languages : [],
+    education: Array.isArray(record.education) ? record.education : [],
     hobbies: Array.isArray(record.hobbies) ? record.hobbies : [],
     updatedAt: record.updatedAt.toISOString(),
   });
