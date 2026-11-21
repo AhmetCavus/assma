@@ -4,12 +4,14 @@ import { legalPageOf } from "./lib/legal";
 import { usePreferences } from "./lib/preferences";
 import { navigate, usePath } from "./lib/router";
 import { useSession } from "./lib/session";
+import { ApplicationPage } from "./pages/ApplicationPage";
 import { AuthPage } from "./pages/AuthPage";
 import { CvImportPage } from "./pages/CvImportPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ExperiencePage } from "./pages/ExperiencePage";
 import { LandingPage } from "./pages/LandingPage";
 import { LegalPage } from "./pages/LegalPage";
+import { ProjectApplyPage } from "./pages/ProjectApplyPage";
 import { ProjectCvPage } from "./pages/ProjectCvPage";
 import { ProjectEditorPage } from "./pages/ProjectEditorPage";
 import { ProjectFitPage } from "./pages/ProjectFitPage";
@@ -22,7 +24,8 @@ const WORKSPACE_PATHS = [
   "/experience",
   "/experience/import",
 ];
-const PROJECT_PATH = /^\/projects\/([a-f0-9]{24})(\/edit|\/cv)?$/;
+const PROJECT_PATH = /^\/projects\/([a-f0-9]{24})(\/edit|\/cv|\/apply)?$/;
+const APPLICATION_PATH = /^\/applications\/([a-f0-9]{24})$/;
 
 export default function App() {
   const preferences = usePreferences();
@@ -32,7 +35,9 @@ export default function App() {
   const projectMatch = PROJECT_PATH.exec(path);
   const projectId = projectMatch?.[1] ?? null;
   const projectView = projectMatch?.[2] ?? "";
-  const inWorkspace = WORKSPACE_PATHS.includes(path) || projectId !== null;
+  const applicationId = APPLICATION_PATH.exec(path)?.[1] ?? null;
+  const inWorkspace =
+    WORKSPACE_PATHS.includes(path) || projectId !== null || applicationId !== null;
   const onAuthPage = path === "/login" || path === "/signup";
   // Legal pages are open to everyone, signed in or not.
   const legal = legalPageOf(path);
@@ -61,7 +66,21 @@ export default function App() {
   if (inWorkspace && signedIn) {
     return (
       <Shell session={session} preferences={preferences} path={path}>
-        {projectId && projectView === "/edit" ? (
+        {applicationId ? (
+          <ApplicationPage
+            key={applicationId}
+            id={applicationId}
+            session={session}
+            preferences={preferences}
+          />
+        ) : projectId && projectView === "/apply" ? (
+          <ProjectApplyPage
+            key={`${projectId}-apply`}
+            id={projectId}
+            session={session}
+            preferences={preferences}
+          />
+        ) : projectId && projectView === "/edit" ? (
           <ProjectEditorPage
             key={`${projectId}-edit`}
             id={projectId}

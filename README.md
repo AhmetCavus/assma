@@ -113,6 +113,36 @@ other widths than pdf-lib measures. A CV PDF is about 0.6 MB.
 
 Applications (email and portal), statistics and the assistant follow in later iterations.
 
+**Iteration 6** adds **applications** and a working **Dashboard**. From a project's fit page
+(or "Apply with this CV" on the CV page), `/projects/<id>/apply` prepares the application:
+
+- **By email:** recipient, subject and a first message in the CV's language (greeting, the
+  confirmed requirements as strengths, a signature from the profile). assma builds the CV PDF
+  and a ready-to-send **`.eml` draft** with the PDF attached (`X-Unsent: 1`, so Outlook opens
+  it as a draft; Thunderbird and Apple Mail open it too). The email leaves from the person's
+  own mail app and address; assma stores no mail credentials. A mailto link is the fallback
+  for web mail (without attachment; the PDF is downloaded alongside).
+- **Through a portal:** portal, submission time, a note, and whether the CV was uploaded. A
+  record may state explicitly that no CV was uploaded.
+
+Recording the application (`POST /applications`) **freezes** the listing, the fit, the profile,
+the references (selected and all, for the matrix years), the CV choices with the photo, and
+keeps the **exact PDF** that was sent (separate sealed collection, up to 3 MB). Later edits
+change future drafts only. A captured project moves to "applied". The application page
+(`/applications/<id>`) sets the project's status, plans a **follow-up** date with a note, keeps
+an **activity** log (notes, replies, status and follow-up changes), and offers the original PDF,
+a fresh PDF or Markdown from the frozen copy. Deleting a project deletes its applications.
+
+The **Dashboard** shows follow-ups that are due or overdue, those coming up in the next two
+weeks, totals (applications, this month, open, projects interviewing) and recent activity.
+Progress (week and month comparison, channels) follows next.
+
+Yappio parses every JSON body first with a 100 kB limit; that parser now steps aside for
+`/api/assma/*`, whose routes parse their own bodies after the session check with per-route
+limits (64 kB by default, 512 kB for CV text, captures and photos, 4.5 MB for an application
+with its PDF). Before, a CV text over about 100 kB was refused despite the 100,000-character
+limit.
+
 ## Structure
 
 The npm workspaces follow [ellma](https://github.com/AhmetCavus/ellma):

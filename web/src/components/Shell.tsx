@@ -61,7 +61,12 @@ export function Shell({
                 <a
                   href={item.path}
                   onClick={linkHandler(item.path)}
-                  className={path.startsWith(item.path) ? "active" : ""}
+                  className={
+                    path.startsWith(item.path) ||
+                    (item.path === "/projects" && path.startsWith("/applications/"))
+                      ? "active"
+                      : ""
+                  }
                   aria-current={path === item.path ? "page" : undefined}
                 >
                   <svg

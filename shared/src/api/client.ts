@@ -32,6 +32,14 @@ import {
   type ProjectInput,
 } from "../projects.js";
 import { fitJobSchema, type CvDraftInput, type FindingChange } from "../fit.js";
+import {
+  applicationFileContentSchema,
+  applicationSchema,
+  applicationSummarySchema,
+  type ApplicationChange,
+  type ApplicationInput,
+  type EventInput,
+} from "../applications.js";
 
 export const API_PREFIX = "/api/assma";
 
@@ -173,6 +181,38 @@ export class AssmaApi {
 
   saveCv(projectId: string, draft: CvDraftInput) {
     return this.call("put", `/projects/${projectId}/cv`, projectSchema, draft);
+  }
+
+  applications() {
+    return this.call("get", "/applications", z.array(applicationSummarySchema));
+  }
+
+  application(id: string) {
+    return this.call("get", `/applications/${id}`, applicationSchema);
+  }
+
+  createApplication(input: ApplicationInput) {
+    return this.call("post", "/applications", applicationSchema, input);
+  }
+
+  changeApplication(id: string, change: ApplicationChange) {
+    return this.call("patch", `/applications/${id}`, applicationSchema, change);
+  }
+
+  deleteApplication(id: string) {
+    return this.call("delete", `/applications/${id}`, z.object({ id: z.string() }));
+  }
+
+  applicationFile(id: string) {
+    return this.call("get", `/applications/${id}/file`, applicationFileContentSchema);
+  }
+
+  addApplicationEvent(id: string, input: EventInput) {
+    return this.call("post", `/applications/${id}/events`, applicationSchema, input);
+  }
+
+  removeApplicationEvent(id: string, eventId: string) {
+    return this.call("delete", `/applications/${id}/events/${eventId}`, applicationSchema);
   }
 
   adminOverview() {

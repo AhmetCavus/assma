@@ -15,8 +15,9 @@ const CLOSED_PLATFORM_ROUTES = /^\/(password|otp|totp|email)(\/|$)|^\/authentica
 // Account security records hold secrets and experience records hold a person's CV data; not even
 // admins read them through the generic API (the admin panel shows totals only, never content).
 const SEALED_COLLECTIONS =
-  /^\/collection\/(assmaaccountsecurity|assmaexperienceprofile|assmaexperiencereference|assmaproject|assmaprofileimage)(\/|$)/i;
+  /^\/collection\/(assmaaccountsecurity|assmaexperienceprofile|assmaexperiencereference|assmaproject|assmaprofileimage|assmaapplication|assmaapplicationfile)(\/|$)/i;
 const PLATFORM_LOGIN = /^\/authenticate\/?$/;
+const ASSMA_API = "/api/assma/";
 const platformLogins = new RateLimiter(40, 15 * 60 * 1000);
 
 export function installBoundaryFirst(server: YappioServer, allowedOrigins: string[]): void {
@@ -75,4 +76,22 @@ export function installBoundaryFirst(server: YappioServer, allowedOrigins: strin
   // Prepend after Express initialization because Yappio installs wildcard CORS in its constructor.
   const stack = app._router.stack as unknown[];
   stack.splice(2, 0, ...stack.splice(-1));
+  deferBodiesUnderAssma(stack);
+}
+
+type Layer = { name?: string; handle: RequestHandler };
+
+/**
+ * Yappio parses every JSON body first, with body-parser's default limit of 100 kB. assma's
+ * routes parse their own bodies after the session check, with limits per route (a CV's text,
+ * an application's PDF), so Yappio's parser steps aside for them.
+ */
+export function deferBodiesUnderAssma(stack: unknown[]): void {
+  for (const layer of stack as Layer[]) {
+    if (layer.name === "jsonParser" || layer.name === "urlencodedParser") {
+      const parse = layer.handle;
+      layer.handle = (request, response, next) =>
+        request.path.startsWith(ASSMA_API) ? next() : parse(request, response, next);
+    }
+  }
 }

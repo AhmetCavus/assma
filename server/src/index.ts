@@ -20,6 +20,7 @@ const { accountPublicRoutes, accountRoutes } = await import("./account/account.r
 const { adminRoutes } = await import("./admin/admin.routes.js");
 const { experienceRoutes } = await import("./experience/experience.routes.js");
 const { projectRoutes } = await import("./projects/project.routes.js");
+const { applicationRoutes } = await import("./applications/application.routes.js");
 const { APP_VERSION } = await import("./platform/version.js");
 
 const app = new Yappio({
@@ -51,12 +52,17 @@ app.use((server) => {
   const large = (path: string) =>
     path === "/experience/import" || path === "/experience/images" || path.startsWith("/projects");
   const regular = express.json({ limit: "64kb" });
+  // A recorded application carries the exact CV PDF (up to 3 MB, base64 in JSON).
+  const submission = express.json({ limit: "4.5mb" });
+  const bodyParser = (method: string, path: string) =>
+    method === "POST" && path === "/applications" ? submission : large(path) ? cvText : regular;
   api.use(requireAccount(), (request, response, next) =>
-    (large(request.path) ? cvText : regular)(request, response, next),
+    bodyParser(request.method, request.path)(request, response, next),
   );
   api.use("/account", accountRoutes);
   api.use("/experience", experienceRoutes);
   api.use("/projects", projectRoutes);
+  api.use("/applications", applicationRoutes);
   api.use("/admin", requireAccount(true), adminRoutes);
   server.use("/api/assma", api);
 });

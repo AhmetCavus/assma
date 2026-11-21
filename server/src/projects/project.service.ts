@@ -8,6 +8,7 @@ import {
   type ListingJob,
   type ListingSuggestions,
 } from "@assma/shared";
+import * as applications from "../applications/application.repository.js";
 import type { Account } from "../platform/access.js";
 import { AssmaError, notFound } from "../platform/errors.js";
 import { modelJobs, type JobView } from "../platform/modelJobs.js";
@@ -57,10 +58,12 @@ export async function changeProject(account: Account, id: string, input: unknown
   return updated;
 }
 
+/** Deleting a project also deletes its applications and their files. */
 export async function deleteProject(account: Account, id: string) {
   if (!(await repository.deleteProject(account.id, id))) {
     throw notFound();
   }
+  await applications.deleteForProject(account.id, id);
   return { id };
 }
 

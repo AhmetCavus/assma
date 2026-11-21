@@ -5,7 +5,6 @@ import {
   CV_THEME_IDS,
   CV_THEMES,
   cssColor,
-  DEFAULT_CV_DESIGN,
   PHOTO_SHAPES,
   type CvDesign,
   type CvLanguage,
@@ -15,7 +14,6 @@ import {
   referenceLabel,
   relevantTo,
   skillRows,
-  supportingReferences,
   toApiError,
   type Experience,
   type Project,
@@ -30,52 +28,11 @@ import {
   framedPhoto,
   type CvDocument,
 } from "../lib/cvDocument";
+import { EMPTY_DRAFT, initialDraft, type Draft } from "../lib/cvDraft";
 import type { Preferences } from "../lib/preferences";
 import { projectsChanged } from "../lib/projects";
-import { linkHandler } from "../lib/router";
+import { linkHandler, navigate } from "../lib/router";
 import type { Session } from "../lib/session";
-
-type Draft = {
-  summary: string;
-  referenceIds: string[];
-  imageId: string | null;
-  /** null: the recommended selection (project-relevant first, then most practised). */
-  skills: string[] | null;
-  /** null: the interface language. */
-  language: CvLanguage | null;
-  design: CvDesign;
-};
-
-/** The saved draft, or a first one: profile summary, references the fit supports, first photo. */
-function initialDraft(project: Project, experience: Experience): Draft {
-  const known = new Set(experience.references.map((reference) => reference.id));
-  const photos = new Set(experience.images.map((image) => image.id));
-  const firstPhoto = experience.images[0]?.id ?? null;
-  if (project.cv) {
-    return {
-      summary: project.cv.summary,
-      referenceIds: project.cv.referenceIds.filter((id) => known.has(id)),
-      imageId: project.cv.imageId && photos.has(project.cv.imageId) ? project.cv.imageId : null,
-      skills: project.cv.skills,
-      language: project.cv.language,
-      design: project.cv.design,
-    };
-  }
-  const supporting = project.fit
-    ? supportingReferences(project.fit).filter((id) => known.has(id))
-    : [];
-  return {
-    summary: experience.profile.summary,
-    referenceIds: (supporting.length > 0
-      ? supporting
-      : experience.references.map((reference) => reference.id)
-    ).slice(0, FIT_LIMITS.cvReferences),
-    imageId: firstPhoto,
-    skills: null,
-    language: null,
-    design: DEFAULT_CV_DESIGN,
-  };
-}
 
 export function ProjectCvPage({
   id,
@@ -91,14 +48,7 @@ export function ProjectCvPage({
   const { api, signOut } = session;
   const [project, setProject] = useState<Project | null>(null);
   const [experience, setExperience] = useState<Experience | null>(null);
-  const [draft, setDraft] = useState<Draft>({
-    summary: "",
-    referenceIds: [],
-    imageId: null,
-    skills: null,
-    language: null,
-    design: DEFAULT_CV_DESIGN,
-  });
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [saved, setSaved] = useState<Draft | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -208,7 +158,7 @@ export function ProjectCvPage({
       };
     });
 
-  async function save() {
+  async function save(): Promise<boolean> {
     setError("");
     setBusy(true);
     try {
@@ -217,10 +167,19 @@ export function ProjectCvPage({
       setSaved(draft);
       setStatus(text.saved);
       projectsChanged();
+      return true;
     } catch (failure) {
       fail(failure);
+      return false;
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** The apply page uses the saved draft, so unsaved changes are saved first. */
+  async function apply() {
+    if (!dirty || (await save())) {
+      navigate(`/projects/${id}/apply`);
     }
   }
 
@@ -529,6 +488,9 @@ export function ProjectCvPage({
             >
               <DownloadIcon />
               {exporting ? copy.common.working : text.pdf}
+            </button>
+            <button type="button" className="pill" onClick={() => void apply()} disabled={busy}>
+              {text.applyWithCv}
             </button>
           </div>
         </section>

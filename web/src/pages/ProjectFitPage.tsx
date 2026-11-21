@@ -13,6 +13,7 @@ import {
   type FitStatus,
   type Project,
 } from "@assma/shared";
+import { useApplications } from "../lib/applications";
 import { takeAutoAssess } from "../lib/flash";
 import type { Preferences } from "../lib/preferences";
 import { projectsChanged } from "../lib/projects";
@@ -207,12 +208,19 @@ export function ProjectFitPage({
             {text.edit}
           </a>
           <a
-            className="button"
+            className="pill"
             href={`/projects/${id}/cv`}
             onClick={linkHandler(`/projects/${id}/cv`)}
           >
             <SparkIcon />
             {text.draftCv}
+          </a>
+          <a
+            className="button"
+            href={`/projects/${id}/apply`}
+            onClick={linkHandler(`/projects/${id}/apply`)}
+          >
+            {text.apply}
           </a>
         </div>
       </div>
@@ -378,6 +386,7 @@ export function ProjectFitPage({
           </section>
         </>
       )}
+      <ProjectApplications projectId={id} session={session} preferences={preferences} />
     </div>
   );
 }
@@ -496,5 +505,59 @@ export function SparkIcon() {
       <path d="M12 2c.6 4.8 2.8 7.4 8 8-5.2.6-7.4 3.2-8 8-.6-4.8-2.8-7.4-8-8 5.2-.6 7.4-3.2 8-8Z" />
       <path d="M19 15c.3 2.1 1.1 3 3 3.3-1.9.3-2.7 1.1-3 3.2-.3-2.1-1.1-2.9-3-3.2 1.9-.3 2.7-1.2 3-3.3Z" />
     </svg>
+  );
+}
+
+/** The applications recorded for this project, newest first. */
+function ProjectApplications({
+  projectId,
+  session,
+  preferences,
+}: {
+  projectId: string;
+  session: Session;
+  preferences: Preferences;
+}) {
+  const { copy, locale } = preferences;
+  const { applications } = useApplications(session.api, () =>
+    session.signOut(copy.common.sessionExpired),
+  );
+  if (applications === null) {
+    return null;
+  }
+  const mine = applications.filter((item) => item.projectId === projectId);
+  const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
+  return (
+    <section className="card" aria-labelledby="applications-title">
+      <h2 id="applications-title">{copy.fit.applicationsTitle}</h2>
+      {mine.length === 0 ? (
+        <p className="muted">{copy.fit.applicationsNone}</p>
+      ) : (
+        <ul className="recent-list">
+          {mine.map((item) => (
+            <li key={item.id}>
+              <a
+                href={`/applications/${item.id}`}
+                onClick={linkHandler(`/applications/${item.id}`)}
+              >
+                <span className="muted small">
+                  {copy.apply.channels[item.channel]} ·{" "}
+                  {dateTime.format(new Date(item.submittedAt))}
+                </span>
+                <strong>
+                  {item.followUpAt
+                    ? copy.application.eventFollowUp(
+                        new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+                          new Date(`${item.followUpAt}T12:00`),
+                        ),
+                      )
+                    : copy.application.snapshotTitle}
+                </strong>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
