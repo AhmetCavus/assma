@@ -15,6 +15,7 @@ import {
 import { setAutoAssess, setFlash } from "../lib/flash";
 import type { Preferences } from "../lib/preferences";
 import { projectsChanged } from "../lib/projects";
+import { takeSeed } from "../lib/seed";
 import { linkHandler, navigate } from "../lib/router";
 import type { Session } from "../lib/session";
 
@@ -134,7 +135,9 @@ export function ProjectEditorPage({
   const text = copy.capture;
   const { api, signOut } = session;
   const [project, setProject] = useState<Project | null>(null);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [draft, setDraft] = useState<Draft>(() =>
+    id !== null ? EMPTY : { ...EMPTY, ...takeSeed() },
+  );
   const [mode, setMode] = useState<"suggest" | "manual">("suggest");
   const [suggested, setSuggested] = useState(false);
   const [job, setJob] = useState<ListingJob | null>(null);

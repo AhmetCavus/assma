@@ -18,11 +18,305 @@ export const en = {
     titleLead: "Your experience.",
     titleNext: "Your next",
     titleAccent: "project.",
-    lead: "assma reads project listings, matches them with your experience and drafts the right CV. It remembers what you sent and whom to follow up with.",
+    lead: "assma reads project listings, matches them with your experience and builds a CV tailored to each project. A language model on this server does the reading, so your CV never goes to an outside AI service.",
     openWorkspace: "Open workspace",
     login: "Log in",
-    iterationNote:
-      "This iteration covers your experience with CV import, the project register, the experience fit and tailored CVs. Applications, statistics and the assistant follow.",
+    signup: "Create account",
+    tourLink: "See how it works",
+    demo: {
+      caption: "See assma at work. Pick a question.",
+      label: "Animated example of assma working on a project",
+      you: "You",
+      nextStep: "Next step",
+      thinking: "assma is reading",
+      title: "Senior Android Engineer",
+      scenes: [
+        {
+          say: "What does the listing ask for?",
+          action: "Requirements found",
+          reply:
+            "Three must-haves: Kotlin with Compose, offline-first and accessibility tested with TalkBack. Release ownership and FHIR R4 are nice to have.",
+          badge: "Captured",
+          meta: "Aster Care · via Northline Talent",
+          step: "Confirm the details and check the fit",
+        },
+        {
+          say: "Does this project fit me?",
+          action: "Experience matched",
+          reply:
+            "Kotlin, Compose and TalkBack are backed by your references. For FHIR R4 I found no evidence in your projects.",
+          badge: "Strong fit · 8/10",
+          meta: "Aster Care · Kotlin / Compose",
+          step: "Review the two supporting references",
+        },
+        {
+          say: "What belongs in my CV?",
+          action: "Two references selected",
+          reply:
+            "Juniper Health for the offline check-in and Kite Transit for the TalkBack-tested ticket purchase. Kotlin leads your skill matrix with 5.5 years.",
+          badge: "CV draft",
+          meta: "Aster Care · Juniper Health / Kite Transit",
+          step: "Choose a layout and export the PDF",
+        },
+      ],
+    },
+    stepsTitle: "Three things. That’s all.",
+    steps: [
+      {
+        title: "Capture the project",
+        body: "Paste the listing or a link. assma suggests the client, tech stack and requirements. You confirm the details.",
+      },
+      {
+        title: "Match your experience",
+        body: "See which requirements your projects support, where evidence is missing and how the score from 1 to 10 comes about.",
+      },
+      {
+        title: "Apply with the right CV",
+        body: "Build a CV from the relevant references, with a skill matrix in years, your photo and the design you choose.",
+      },
+    ],
+    facts: [
+      "Local open-weight model",
+      "Self-hosted",
+      "CV as PDF and Markdown",
+      "German and English",
+    ],
+    tour: {
+      eyebrow: "In action",
+      title: "From listing to CV in minutes",
+      lead: "Recorded in assma itself, with a sample profile.",
+      items: [
+        {
+          title: "Capture a listing in seconds",
+          body: "Paste a link or the text. The local model suggests title, client, agency, contact, tech stack and requirements, and fills only the fields you left empty.",
+          alt: "A listing is pasted, assma reads it and fills in the project details",
+        },
+        {
+          title: "A fit score you can trace",
+          body: "Every requirement is checked against your references: confirmed, partial or missing. Required experience counts double. Change a finding and the score follows.",
+          alt: "The experience fit with a score of 8 out of 10 and one finding per requirement",
+        },
+        {
+          title: "A CV that looks the part",
+          body: "A skill matrix in years, your photo in one of five frames, six colour themes and five layouts. In German or English, whatever language you work in.",
+          alt: "The tailored CV switching between layouts, colour themes and photo frames",
+        },
+        {
+          title: "Bring your existing CV",
+          body: "Drop in a PDF or Word file. assma reads it part by part and suggests your profile, projects, languages, education and certificates. You decide what is kept.",
+          alt: "A CV is imported and its profile and project references are reviewed",
+        },
+      ],
+    },
+    privacy: {
+      eyebrow: "Privacy",
+      title: "Your data stays with you",
+      items: [
+        {
+          title: "A model on this server",
+          body: "Listings and CVs are read by an open-weight model running next to assma. No outside AI service sees them.",
+        },
+        {
+          title: "Your own installation",
+          body: "Profile, references, photos and projects live in this installation’s database. Each account sees only its own data.",
+        },
+        {
+          title: "Exports in your browser",
+          body: "PDF and Markdown files are created in your browser. Nothing is uploaded to build them.",
+        },
+      ],
+    },
+    next: {
+      title: "Coming next",
+      items: [
+        "Applications by email or portal, with the exact version you sent",
+        "Follow-ups and your progress over time",
+        "An assistant you can ask about your projects",
+      ],
+    },
+    seed: {
+      title: "Which project caught your eye?",
+      lead: "Paste a project link or the listing text. assma takes it from there.",
+      placeholder: "Paste a project link or listing",
+      action: "Check with assma",
+    },
+    footer: {
+      tagline: "assma · your local companion for project acquisition.",
+      ellmaHint: "ellma, the sister app for your goals",
+    },
+  },
+  legal: {
+    footer: {
+      label: "Legal",
+      privacy: "Data privacy",
+      terms: "Terms and conditions",
+      cookies: "Cookie settings",
+      imprint: "Imprint",
+      poweredBy: "Powered by",
+    },
+    back: "Back to assma",
+    updated: "Last updated: 21 November 2026",
+    imprint: {
+      title: "Imprint",
+      lead: "Who runs assma and how to reach us.",
+      operator: "Operator",
+      representative: "Represented by",
+      contact: "Contact",
+      email: "Email",
+      phone: "Phone",
+      register: "Register entry",
+      vat: "VAT ID",
+      missing:
+        "The operator details for this installation have not been entered yet. assma is in a closed alpha test and is not offered to the public.",
+      aboutTitle: "About this service",
+      about:
+        "assma is a local assistant for freelance project acquisition and a test project of yappai. It is in alpha: free of charge, without guaranteed availability.",
+    },
+    privacy: {
+      title: "Data privacy",
+      lead: "assma works with your CV, so it is built to keep it with you. This page says plainly what is stored, where, and why.",
+      sections: [
+        {
+          title: "Who is responsible",
+          body: [
+            "The operator named in the imprint is responsible for processing your data. Use the contact details there for every privacy question or request.",
+          ],
+        },
+        {
+          title: "What assma stores",
+          body: [
+            "Your account: first name, email address and a hashed password, plus the time from which your sign-ins are valid, so a sign-out can end older sessions.",
+            "Your experience: the details you enter or import, such as name, role, location, email, phone, address, website, summary, certificates, languages, education and hobbies, your profile photos, and your project references with client, role, period, contribution and technologies.",
+            "Your projects: the listings you capture with their link, text, client, agency, contact person, tech stack, requirements and terms, the fit assessment with your corrections, and the CV draft with its design settings.",
+            "We use this data only to provide assma to you (Art. 6(1)(b) GDPR). There is no advertising, no analytics and no profiling.",
+          ],
+        },
+        {
+          title: "Where it is stored",
+          body: [
+            "Everything is stored on yappai's own server. Requests reach it through Cloudflare, which transports the encrypted connection and processes technical connection data such as your IP address on our behalf.",
+            "Server logs with technical connection data are kept briefly to keep the service secure and working (Art. 6(1)(f) GDPR).",
+          ],
+        },
+        {
+          title: "The AI model",
+          body: [
+            "Listings and CVs are read by an open-weight language model that runs on the same server. They are not sent to an external AI provider and are not used to train models.",
+            "While the model reads, the text is held in the server's memory only. The suggestions it produces are kept for up to 30 minutes and are stored only if you take them over.",
+          ],
+        },
+        {
+          title: "CV import and exports",
+          body: [
+            "When you import a CV, your browser extracts the text from the PDF or Word file. The file itself is never uploaded; only its text is sent for reading.",
+            "CVs as PDF or Markdown are created in your browser and saved straight to your device.",
+          ],
+        },
+        {
+          title: "Project links",
+          body: [
+            "When you add a project by link, the assma server fetches that page once to read the listing. The website you link to sees a request from the server, not from you.",
+          ],
+        },
+        {
+          title: "Other people's data",
+          body: [
+            "Listings and references can name other people, such as a recruiter or a client contact. Add such details only where you are allowed to use them for your applications.",
+          ],
+        },
+        {
+          title: "Cookies and storage in your browser",
+          body: [
+            "assma sets no cookies and uses no tracking. It uses your browser's storage only for what the app needs: your sign-in, language and theme, and for the current tab a running CV import and a project you typed on the start page.",
+          ],
+        },
+        {
+          title: "How long data is kept",
+          body: [
+            "Your data is kept as long as your account exists. You can change or delete your details, photos, references and projects yourself in the app. To delete your account with all data, write to the contact in the imprint.",
+            "assma is in alpha. Data can be lost or reset when the data model changes; please keep your own copy of your CV.",
+          ],
+        },
+        {
+          title: "Administration",
+          body: [
+            "The operator's administrators see totals such as the number of accounts. The admin panel cannot open your profile, references, photos or projects.",
+          ],
+        },
+        {
+          title: "Your rights",
+          body: [
+            "You have the right to access, correct, delete, restrict and receive your data, and to object to processing. You can also complain to a data protection supervisory authority.",
+          ],
+        },
+      ],
+    },
+    terms: {
+      title: "Terms and conditions",
+      lead: "The short version: assma is a free alpha. Check what it writes before you send it, and don't rely on it for anything critical.",
+      sections: [
+        {
+          title: "The service",
+          body: [
+            "assma helps you keep your professional experience, capture project listings, assess how well they fit and create tailored CVs. It is provided free of charge by the operator named in the imprint.",
+          ],
+        },
+        {
+          title: "Alpha status",
+          body: [
+            "assma is an early test version. Features can change or disappear, the service can be unavailable, and stored data can be reset without migration. There is no claim to availability or to a particular feature.",
+          ],
+        },
+        {
+          title: "Your account",
+          body: [
+            "You need an account with a valid email address and a password you keep to yourself. The account is personal. Tell us if you think someone else is using it.",
+          ],
+        },
+        {
+          title: "Fair use",
+          body: [
+            "Use assma for your own applications. Do not try to access other people's data, overload or attack the service, or use it to fetch pages you are not allowed to access. We may block accounts that do.",
+          ],
+        },
+        {
+          title: "What assma suggests",
+          body: [
+            "Suggestions, fit scores and CV texts are generated by an AI model and can be wrong or incomplete. Check them before you use them. You are responsible for what you send to clients and agencies.",
+          ],
+        },
+        {
+          title: "Your content",
+          body: [
+            "Your experience, photos and projects remain yours. We only process them to run assma for you, as described under “Data privacy”. Upload only photos and content you have the right to use.",
+          ],
+        },
+        {
+          title: "Liability",
+          body: [
+            "We are liable without limit for intent and gross negligence and for injury to life, body or health. Otherwise, because the service is free and in test operation, liability is limited to the extent the law allows.",
+          ],
+        },
+        {
+          title: "Ending and changes",
+          body: [
+            "You can stop using assma at any time and ask for your account to be deleted. We can end the test or change these terms; the current version is always on this page.",
+          ],
+        },
+      ],
+    },
+    storage: {
+      title: "Cookie settings",
+      lead: "assma sets no cookies and uses no tracking. It only uses storage in your browser for what the app needs.",
+      necessaryTitle: "Necessary",
+      necessaryText:
+        "Your sign-in, language and theme. For the current tab only: a running CV import, so it survives a reload, and a project you typed on the start page until it is opened.",
+      alwaysOn: "Always on",
+      trackingTitle: "Statistics and marketing",
+      trackingText: "None. There is nothing to switch off.",
+      never: "Not used",
+      close: "Close",
+    },
   },
   auth: {
     loginTitle: "Welcome back",

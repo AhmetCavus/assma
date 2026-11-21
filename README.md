@@ -4,6 +4,25 @@ A local assistant for freelance project acquisition. The design and concept are 
 [`docs/`](docs/README.md) ([concept](docs/assma-Concept.md), [brand](docs/brand),
 [screens](docs/screens)).
 
+<p align="center">
+  <img src="web/public/tour/capture.gif" width="480" alt="A listing is pasted and assma fills in the project details">
+  <img src="web/public/tour/cv.gif" width="480" alt="The tailored CV switching between layouts, colour themes and photo frames">
+</p>
+
+The **landing page** explains the product with an animated demo, the three steps, a tour of
+four GIFs recorded in the app (`web/public/tour`: capture, fit, CV design, CV import, each
+with a still `.png` for visitors who prefer reduced motion), the privacy points, what comes
+next, and a footer with the data-use notice. A link or listing typed into its last field is
+carried through sign-up into the project editor (`web/src/lib/seed.ts`).
+
+As in ellma, **data privacy** (`/privacy`), **terms** (`/terms`) and the **imprint**
+(`/imprint`) are open to everyone and linked from every footer, together with the cookie
+settings (assma only uses necessary browser storage and no tracking). The imprint's operator
+details are build settings: set `VITE_LEGAL_NAME`, `VITE_LEGAL_ADDRESS` (lines separated by
+`;`), `VITE_LEGAL_EMAIL` and optionally `VITE_LEGAL_REPRESENTATIVE`, `VITE_LEGAL_PHONE`,
+`VITE_LEGAL_REGISTER` and `VITE_LEGAL_VAT_ID` in `.env` before building the web image. Until
+name, address and email are set, the imprint says the details have not been entered yet.
+
 **Iteration 1** brings the application up on the existing Yappio infrastructure. It
 contains the landing page, sign-in and a minimal Dashboard, plus a role-protected admin
 shell. assma is registered with Yoster.

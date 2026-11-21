@@ -10,6 +10,14 @@ services:
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-http://192.168.178.131:4873/}
         VITE_API_URL: ${ASSMA_API_URL:-https://assma-api.yappai.de}
+        # Operator details for the imprint (see .env.example); empty until set.
+        VITE_LEGAL_NAME: ${VITE_LEGAL_NAME:-}
+        VITE_LEGAL_ADDRESS: ${VITE_LEGAL_ADDRESS:-}
+        VITE_LEGAL_REPRESENTATIVE: ${VITE_LEGAL_REPRESENTATIVE:-}
+        VITE_LEGAL_EMAIL: ${VITE_LEGAL_EMAIL:-}
+        VITE_LEGAL_PHONE: ${VITE_LEGAL_PHONE:-}
+        VITE_LEGAL_REGISTER: ${VITE_LEGAL_REGISTER:-}
+        VITE_LEGAL_VAT_ID: ${VITE_LEGAL_VAT_ID:-}
     restart: unless-stopped
     expose: ["80"]
     networks: [dev-proxy]

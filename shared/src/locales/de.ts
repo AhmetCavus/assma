@@ -19,11 +19,305 @@ export const de: Copy = {
     titleLead: "Deine Erfahrung.",
     titleNext: "Dein nächstes",
     titleAccent: "Projekt.",
-    lead: "assma liest Ausschreibungen, gleicht sie mit deiner Erfahrung ab und entwirft den passenden CV. Sie merkt sich, was du verschickt hast und bei wem du nachhaken wolltest.",
+    lead: "assma liest Ausschreibungen, gleicht sie mit deiner Erfahrung ab und erstellt für jedes Projekt den passenden CV. Ein Sprachmodell auf diesem Server liest mit, dein CV geht an keinen externen KI-Dienst.",
     openWorkspace: "Arbeitsbereich öffnen",
     login: "Anmelden",
-    iterationNote:
-      "Diese Ausbaustufe umfasst deine Erfahrung mit CV-Import, das Projektregister, die Erfahrungspassung und passende CVs. Bewerbungen, Statistiken und die Assistentin folgen.",
+    signup: "Konto erstellen",
+    tourLink: "So funktioniert es",
+    demo: {
+      caption: "So arbeitet assma. Wähle eine Frage.",
+      label: "Animiertes Beispiel, wie assma an einem Projekt arbeitet",
+      you: "Du",
+      nextStep: "Nächster Schritt",
+      thinking: "assma liest",
+      title: "Senior Android Engineer",
+      scenes: [
+        {
+          say: "Was verlangt die Ausschreibung?",
+          action: "Anforderungen erkannt",
+          reply:
+            "Drei Muss-Kriterien: Kotlin mit Compose, Offline-first und Barrierefreiheit mit TalkBack. Release-Verantwortung und FHIR R4 sind wünschenswert.",
+          badge: "Erfasst",
+          meta: "Aster Care · über Northline Talent",
+          step: "Angaben bestätigen und Passung prüfen",
+        },
+        {
+          say: "Passt dieses Projekt zu mir?",
+          action: "Erfahrung abgeglichen",
+          reply:
+            "Kotlin, Compose und TalkBack sind durch deine Referenzen belegt. Für FHIR R4 finde ich in deinen Projekten keinen Nachweis.",
+          badge: "Gute Passung · 8/10",
+          meta: "Aster Care · Kotlin / Compose",
+          step: "Die zwei belegenden Referenzen ansehen",
+        },
+        {
+          say: "Was gehört in meinen CV?",
+          action: "Zwei Referenzen ausgewählt",
+          reply:
+            "Juniper Health für den Offline-Check-in und Kite Transit für den mit TalkBack getesteten Ticketkauf. Kotlin führt deine Skill-Matrix mit 5,5 Jahren an.",
+          badge: "CV-Entwurf",
+          meta: "Aster Care · Juniper Health / Kite Transit",
+          step: "Layout wählen und PDF exportieren",
+        },
+      ],
+    },
+    stepsTitle: "Drei Dinge. Mehr nicht.",
+    steps: [
+      {
+        title: "Projekt erfassen",
+        body: "Füge die Ausschreibung oder einen Link ein. assma schlägt Kunde, Tech-Stack und Anforderungen vor. Du bestätigst die Angaben.",
+      },
+      {
+        title: "Erfahrung abgleichen",
+        body: "Sieh, welche Anforderungen deine Projekte belegen, wo Erfahrung fehlt und wie der Wert von 1 bis 10 zustande kommt.",
+      },
+      {
+        title: "Gezielt bewerben",
+        body: "Erstelle deinen CV aus den passenden Referenzen, mit Skill-Matrix in Jahren, deinem Foto und dem Design deiner Wahl.",
+      },
+    ],
+    facts: [
+      "Lokales Open-Weight-Modell",
+      "Eigene Installation",
+      "CV als PDF und Markdown",
+      "Deutsch und Englisch",
+    ],
+    tour: {
+      eyebrow: "In Aktion",
+      title: "Von der Ausschreibung zum CV in Minuten",
+      lead: "Aufgenommen in assma selbst, mit einem Beispielprofil.",
+      items: [
+        {
+          title: "Ausschreibung in Sekunden erfassen",
+          body: "Füge einen Link oder den Text ein. Das lokale Modell schlägt Titel, Kunde, Vermittlung, Kontakt, Tech-Stack und Anforderungen vor und füllt nur Felder, die noch leer sind.",
+          alt: "Eine Ausschreibung wird eingefügt, assma liest sie und füllt die Projektangaben aus",
+        },
+        {
+          title: "Eine Bewertung, die du nachvollziehst",
+          body: "Jede Anforderung wird mit deinen Referenzen abgeglichen: belegt, teilweise oder fehlend. Muss-Kriterien zählen doppelt. Änderst du einen Befund, folgt der Wert.",
+          alt: "Die Erfahrungspassung mit 8 von 10 und einem Befund je Anforderung",
+        },
+        {
+          title: "Ein CV, der überzeugt",
+          body: "Skill-Matrix in Jahren, dein Foto in einem von fünf Rahmen, sechs Farbthemen und fünf Layouts. Auf Deutsch oder Englisch, egal in welcher Sprache du arbeitest.",
+          alt: "Der passende CV wechselt zwischen Layouts, Farbthemen und Fotorahmen",
+        },
+        {
+          title: "Bring deinen bisherigen CV mit",
+          body: "Lade eine PDF- oder Word-Datei hoch. assma liest sie Teil für Teil und schlägt Profil, Projekte, Sprachen, Ausbildung und Zertifikate vor. Du entscheidest, was übernommen wird.",
+          alt: "Ein CV wird importiert, Profil und Projektreferenzen werden geprüft",
+        },
+      ],
+    },
+    privacy: {
+      eyebrow: "Datenschutz",
+      title: "Deine Daten bleiben bei dir",
+      items: [
+        {
+          title: "Ein Modell auf diesem Server",
+          body: "Ausschreibungen und CVs liest ein Open-Weight-Modell, das neben assma läuft. Kein externer KI-Dienst bekommt sie zu sehen.",
+        },
+        {
+          title: "Deine eigene Installation",
+          body: "Profil, Referenzen, Fotos und Projekte liegen in der Datenbank dieser Installation. Jedes Konto sieht nur seine eigenen Daten.",
+        },
+        {
+          title: "Exporte im Browser",
+          body: "PDF- und Markdown-Dateien entstehen in deinem Browser. Dafür wird nichts hochgeladen.",
+        },
+      ],
+    },
+    next: {
+      title: "Als Nächstes",
+      items: [
+        "Bewerbungen per E-Mail oder Portal, mit der genau versendeten Fassung",
+        "Wiedervorlagen und dein Fortschritt über die Zeit",
+        "Eine Assistentin, die du zu deinen Projekten fragen kannst",
+      ],
+    },
+    seed: {
+      title: "Welches Projekt hast du im Blick?",
+      lead: "Füge einen Projektlink oder den Text der Ausschreibung ein. assma übernimmt den Rest.",
+      placeholder: "Projektlink oder Ausschreibung einfügen",
+      action: "Mit assma prüfen",
+    },
+    footer: {
+      tagline: "assma · deine lokale Begleiterin für die Projektakquise.",
+      ellmaHint: "ellma, die Schwester-App für deine Ziele",
+    },
+  },
+  legal: {
+    footer: {
+      label: "Rechtliches",
+      privacy: "Datenschutz",
+      terms: "AGB",
+      cookies: "Cookie-Einstellungen",
+      imprint: "Impressum",
+      poweredBy: "Powered by",
+    },
+    back: "Zurück zu assma",
+    updated: "Stand: 21. November 2026",
+    imprint: {
+      title: "Impressum",
+      lead: "Wer assma betreibt und wie du uns erreichst.",
+      operator: "Betreiber",
+      representative: "Vertreten durch",
+      contact: "Kontakt",
+      email: "E-Mail",
+      phone: "Telefon",
+      register: "Registereintrag",
+      vat: "USt-IdNr.",
+      missing:
+        "Die Angaben zum Betreiber wurden für diese Installation noch nicht hinterlegt. assma befindet sich im geschlossenen Alpha-Test und wird nicht öffentlich angeboten.",
+      aboutTitle: "Über diesen Dienst",
+      about:
+        "assma ist eine lokale Begleiterin für die Projektakquise von Freelancern und ein Testprojekt von yappai. Sie befindet sich im Alpha-Stadium: kostenlos und ohne zugesicherte Verfügbarkeit.",
+    },
+    privacy: {
+      title: "Datenschutz",
+      lead: "assma arbeitet mit deinem CV und ist deshalb so gebaut, dass er bei dir bleibt. Hier steht klar, was gespeichert wird, wo und warum.",
+      sections: [
+        {
+          title: "Wer verantwortlich ist",
+          body: [
+            "Verantwortlich für die Verarbeitung deiner Daten ist der im Impressum genannte Betreiber. Nutze die Kontaktdaten dort für alle Fragen und Anliegen zum Datenschutz.",
+          ],
+        },
+        {
+          title: "Was assma speichert",
+          body: [
+            "Dein Konto: Vorname, E-Mail-Adresse und ein gehashtes Passwort sowie den Zeitpunkt, ab dem deine Anmeldungen gültig sind, damit eine Abmeldung ältere Sitzungen beenden kann.",
+            "Deine Erfahrung: die Angaben, die du einträgst oder importierst, etwa Name, Rolle, Ort, E-Mail, Telefon, Adresse, Website, Kurzprofil, Zertifikate, Sprachen, Ausbildung und Hobbys, deine Profilfotos sowie deine Projektreferenzen mit Kunde, Rolle, Zeitraum, Beitrag und Technologien.",
+            "Deine Projekte: die erfassten Ausschreibungen mit Link, Text, Kunde, Vermittlung, Ansprechperson, Tech-Stack, Anforderungen und Rahmenbedingungen, die Passungsbewertung mit deinen Korrekturen und der CV-Entwurf mit seinen Gestaltungseinstellungen.",
+            "Wir nutzen diese Daten nur, um dir assma bereitzustellen (Art. 6 Abs. 1 lit. b DSGVO). Es gibt keine Werbung, keine Analyse und kein Profiling.",
+          ],
+        },
+        {
+          title: "Wo es gespeichert wird",
+          body: [
+            "Alles liegt auf einem eigenen Server von yappai. Anfragen erreichen ihn über Cloudflare; Cloudflare transportiert die verschlüsselte Verbindung und verarbeitet dabei in unserem Auftrag technische Verbindungsdaten wie deine IP-Adresse.",
+            "Server-Protokolle mit technischen Verbindungsdaten werden kurzzeitig aufbewahrt, um den Dienst sicher und funktionsfähig zu halten (Art. 6 Abs. 1 lit. f DSGVO).",
+          ],
+        },
+        {
+          title: "Das KI-Modell",
+          body: [
+            "Ausschreibungen und CVs liest ein Sprachmodell mit offenen Gewichten, das auf demselben Server läuft. Sie gehen an keinen externen KI-Anbieter und werden nicht zum Training von Modellen verwendet.",
+            "Während das Modell liest, liegt der Text nur im Arbeitsspeicher des Servers. Die Vorschläge bleiben bis zu 30 Minuten abrufbar und werden nur gespeichert, wenn du sie übernimmst.",
+          ],
+        },
+        {
+          title: "CV-Import und Exporte",
+          body: [
+            "Beim CV-Import liest dein Browser den Text aus der PDF- oder Word-Datei. Die Datei selbst wird nie hochgeladen, nur ihr Text wird zum Lesen übertragen.",
+            "CVs als PDF oder Markdown entstehen in deinem Browser und werden direkt auf deinem Gerät gespeichert.",
+          ],
+        },
+        {
+          title: "Projektlinks",
+          body: [
+            "Fügst du ein Projekt per Link hinzu, ruft der assma-Server diese Seite einmal ab, um die Ausschreibung zu lesen. Die verlinkte Website sieht eine Anfrage des Servers, nicht deine.",
+          ],
+        },
+        {
+          title: "Daten anderer Personen",
+          body: [
+            "Ausschreibungen und Referenzen können andere Personen nennen, etwa Recruiter oder Ansprechpersonen beim Kunden. Trage solche Angaben nur ein, wenn du sie für deine Bewerbungen nutzen darfst.",
+          ],
+        },
+        {
+          title: "Cookies und Speicher in deinem Browser",
+          body: [
+            "assma setzt keine Cookies und nutzt kein Tracking. Der Speicher deines Browsers wird nur für das genutzt, was die App braucht: deine Anmeldung, Sprache und Darstellung sowie, nur für den aktuellen Tab, einen laufenden CV-Import und ein Projekt, das du auf der Startseite eingegeben hast.",
+          ],
+        },
+        {
+          title: "Wie lange Daten bleiben",
+          body: [
+            "Deine Daten bleiben gespeichert, solange dein Konto besteht. Angaben, Fotos, Referenzen und Projekte kannst du in der App selbst ändern oder löschen. Um dein Konto mit allen Daten zu löschen, schreibe an den Kontakt im Impressum.",
+            "assma ist im Alpha-Stadium. Daten können verloren gehen oder zurückgesetzt werden, wenn sich das Datenmodell ändert; bewahre bitte eine eigene Kopie deines CVs auf.",
+          ],
+        },
+        {
+          title: "Administration",
+          body: [
+            "Die Administratoren des Betreibers sehen Summen wie die Zahl der Konten. Dein Profil, deine Referenzen, Fotos und Projekte kann das Admin-Panel nicht öffnen.",
+          ],
+        },
+        {
+          title: "Deine Rechte",
+          body: [
+            "Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung und Übertragung deiner Daten sowie auf Widerspruch gegen die Verarbeitung. Außerdem kannst du dich bei einer Datenschutz-Aufsichtsbehörde beschweren.",
+          ],
+        },
+      ],
+    },
+    terms: {
+      title: "Allgemeine Geschäftsbedingungen",
+      lead: "Kurz gesagt: assma ist eine kostenlose Alpha. Prüfe, was sie schreibt, bevor du es verschickst, und verlasse dich bei Wichtigem nicht allein auf sie.",
+      sections: [
+        {
+          title: "Der Dienst",
+          body: [
+            "assma hilft dir, deine Berufserfahrung zu pflegen, Projektausschreibungen zu erfassen, ihre Passung einzuschätzen und passende CVs zu erstellen. Sie wird vom im Impressum genannten Betreiber kostenlos bereitgestellt.",
+          ],
+        },
+        {
+          title: "Alpha-Stadium",
+          body: [
+            "assma ist eine frühe Testversion. Funktionen können sich ändern oder wegfallen, der Dienst kann nicht erreichbar sein, und gespeicherte Daten können ohne Übernahme zurückgesetzt werden. Es besteht kein Anspruch auf Verfügbarkeit oder bestimmte Funktionen.",
+          ],
+        },
+        {
+          title: "Dein Konto",
+          body: [
+            "Du brauchst ein Konto mit gültiger E-Mail-Adresse und einem Passwort, das du für dich behältst. Das Konto ist persönlich. Sag uns Bescheid, wenn du glaubst, dass jemand anderes es nutzt.",
+          ],
+        },
+        {
+          title: "Faire Nutzung",
+          body: [
+            "Nutze assma für deine eigenen Bewerbungen. Versuche nicht, auf Daten anderer zuzugreifen, den Dienst zu überlasten oder anzugreifen oder über ihn Seiten abzurufen, auf die du nicht zugreifen darfst. Wir können Konten sperren, die das tun.",
+          ],
+        },
+        {
+          title: "Was assma vorschlägt",
+          body: [
+            "Vorschläge, Passungswerte und CV-Texte erzeugt ein KI-Modell; sie können falsch oder unvollständig sein. Prüfe sie, bevor du sie verwendest. Für das, was du an Kunden und Vermittlungen schickst, bist du verantwortlich.",
+          ],
+        },
+        {
+          title: "Deine Inhalte",
+          body: [
+            "Deine Erfahrung, Fotos und Projekte bleiben deine. Wir verarbeiten sie nur, um assma für dich zu betreiben, wie unter „Datenschutz“ beschrieben. Lade nur Fotos und Inhalte hoch, die du verwenden darfst.",
+          ],
+        },
+        {
+          title: "Haftung",
+          body: [
+            "Wir haften unbeschränkt bei Vorsatz und grober Fahrlässigkeit sowie bei Verletzung von Leben, Körper oder Gesundheit. Im Übrigen ist die Haftung, da der Dienst kostenlos und im Testbetrieb ist, soweit gesetzlich zulässig beschränkt.",
+          ],
+        },
+        {
+          title: "Ende und Änderungen",
+          body: [
+            "Du kannst assma jederzeit nicht mehr nutzen und die Löschung deines Kontos verlangen. Wir können den Test beenden oder diese Bedingungen ändern; die aktuelle Fassung steht immer auf dieser Seite.",
+          ],
+        },
+      ],
+    },
+    storage: {
+      title: "Cookie-Einstellungen",
+      lead: "assma setzt keine Cookies und nutzt kein Tracking. Der Speicher deines Browsers wird nur für das genutzt, was die App braucht.",
+      necessaryTitle: "Notwendig",
+      necessaryText:
+        "Deine Anmeldung, Sprache und Darstellung. Nur für den aktuellen Tab: ein laufender CV-Import, damit er ein Neuladen übersteht, und ein Projekt, das du auf der Startseite eingegeben hast, bis es geöffnet ist.",
+      alwaysOn: "Immer aktiv",
+      trackingTitle: "Statistik und Marketing",
+      trackingText: "Keine. Es gibt nichts abzuschalten.",
+      never: "Nicht genutzt",
+      close: "Schließen",
+    },
   },
   auth: {
     loginTitle: "Willkommen zurück",

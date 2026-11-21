@@ -83,6 +83,10 @@ assert.match(example, /^DB_URI_DOCKER=mongodb:\/\/[^@]+@shared-mongo:27017\/assm
 // The API must accept both browser apps, and each image must build its own site.
 assert.ok(compose.services.api.environment.ALLOWED_ORIGINS.includes("ASSMA_ADMIN_URL"));
 assert.equal(compose.services.web.build.target, "runtime");
+// The imprint's operator details reach the web build as build arguments.
+for (const name of ["NAME", "ADDRESS", "REPRESENTATIVE", "EMAIL", "PHONE", "REGISTER", "VAT_ID"]) {
+  assert.ok(`VITE_LEGAL_${name}` in compose.services.web.build.args, `VITE_LEGAL_${name}`);
+}
 assert.equal(compose.services.admin.build.target, "admin");
 console.log(
   "Compose, routers, ports, health checks, manifest and shared Mongo references: passed.",

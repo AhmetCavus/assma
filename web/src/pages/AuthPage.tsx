@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Wordmark } from "../components/GrapeMark";
 import { LocaleSelect, ThemeButton } from "../components/Controls";
+import { SiteFooter } from "../components/SiteFooter";
 import type { Preferences } from "../lib/preferences";
+import { hasSeed } from "../lib/seed";
 import { linkHandler, navigate } from "../lib/router";
 import type { Session } from "../lib/session";
 
@@ -25,7 +27,8 @@ export function AuthPage({
       ? await session.signUp(name, email, password)
       : await session.signIn(email, password);
     if (ok) {
-      navigate("/dashboard", { replace: true });
+      // A project typed on the landing page opens in the editor right away.
+      navigate(hasSeed() ? "/projects/new" : "/dashboard", { replace: true });
     }
   }
 
@@ -110,6 +113,7 @@ export function AuthPage({
           {signup ? copy.auth.toLogin : copy.auth.toSignup}
         </a>
       </section>
+      <SiteFooter preferences={preferences} />
     </main>
   );
 }

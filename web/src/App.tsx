@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Shell } from "./components/Shell";
+import { legalPageOf } from "./lib/legal";
 import { usePreferences } from "./lib/preferences";
 import { navigate, usePath } from "./lib/router";
 import { useSession } from "./lib/session";
@@ -8,6 +9,7 @@ import { CvImportPage } from "./pages/CvImportPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ExperiencePage } from "./pages/ExperiencePage";
 import { LandingPage } from "./pages/LandingPage";
+import { LegalPage } from "./pages/LegalPage";
 import { ProjectCvPage } from "./pages/ProjectCvPage";
 import { ProjectEditorPage } from "./pages/ProjectEditorPage";
 import { ProjectFitPage } from "./pages/ProjectFitPage";
@@ -32,16 +34,29 @@ export default function App() {
   const projectView = projectMatch?.[2] ?? "";
   const inWorkspace = WORKSPACE_PATHS.includes(path) || projectId !== null;
   const onAuthPage = path === "/login" || path === "/signup";
+  // Legal pages are open to everyone, signed in or not.
+  const legal = legalPageOf(path);
 
   useEffect(() => {
     if (inWorkspace && !signedIn) {
       navigate("/login", { replace: true });
     } else if (onAuthPage && signedIn) {
       navigate("/dashboard", { replace: true });
-    } else if (!inWorkspace && !onAuthPage && path !== "/") {
+    } else if (!inWorkspace && !onAuthPage && !legal && path !== "/") {
       navigate("/", { replace: true });
     }
-  }, [path, signedIn, inWorkspace, onAuthPage]);
+  }, [path, signedIn, inWorkspace, onAuthPage, legal]);
+
+  // A legal page opens at its top, not where the previous page was scrolled to.
+  useEffect(() => {
+    if (legal) {
+      window.scrollTo(0, 0);
+    }
+  }, [legal]);
+
+  if (legal) {
+    return <LegalPage page={legal} preferences={preferences} />;
+  }
 
   if (inWorkspace && signedIn) {
     return (

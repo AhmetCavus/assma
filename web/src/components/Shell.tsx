@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SiteFooter } from "./SiteFooter";
 import { GrapeMark, Wordmark } from "./GrapeMark";
 import { GitHubLink, LocaleSelect, ThemeButton } from "./Controls";
 import type { Preferences } from "../lib/preferences";
@@ -111,6 +112,7 @@ export function Shell({
           <button type="button" className="link" onClick={() => session.signOut()}>
             {copy.auth.logout}
           </button>
+          <SiteFooter preferences={preferences} compact />
         </div>
       </aside>
       <main className="workspace-main">{children}</main>
