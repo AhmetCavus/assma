@@ -30,6 +30,7 @@ const { accountPublicRoutes, accountRoutes } = await import("./account/account.r
 const { adminRoutes } = await import("./admin/admin.routes.js");
 const { experienceRoutes } = await import("./experience/experience.routes.js");
 const { projectRoutes } = await import("./projects/project.routes.js");
+const { assistantRoutes } = await import("./assistant/assistant.routes.js");
 const { applicationRoutes } = await import("./applications/application.routes.js");
 const { APP_VERSION } = await import("./platform/version.js");
 
@@ -73,6 +74,7 @@ app.use((server) => {
   api.use("/experience", experienceRoutes);
   api.use("/projects", projectRoutes);
   api.use("/applications", applicationRoutes);
+  api.use("/assistant", assistantRoutes);
   api.use("/admin", requireAccount(true), adminRoutes);
   server.use("/api/assma", api);
 });

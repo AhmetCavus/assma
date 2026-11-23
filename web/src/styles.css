@@ -323,7 +323,8 @@ h2 {
 }
 
 .workspace-main {
-  padding: 40px 16px 64px;
+  /* Room for the assistant dock at the bottom. */
+  padding: 40px 16px 200px;
 }
 
 .page {
@@ -3589,4 +3590,431 @@ h2 {
 .due-head h2 {
   padding: 0;
   border: 0;
+}
+
+/* The assma assistant on the apply page */
+.label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.version-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.version-bar .icon-button {
+  width: 30px;
+  height: 30px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.version-bar .icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.chip.small {
+  padding: 4px 10px;
+  font-size: 0.82rem;
+}
+
+kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--raised);
+  font-family: var(--sans);
+  font-size: 0.75rem;
+}
+
+/* The assma assistant dock, on every signed-in page */
+.dock {
+  position: fixed;
+  left: calc(220px + (100vw - 220px) / 2);
+  bottom: 16px;
+  z-index: 40;
+  display: grid;
+  gap: 8px;
+  width: min(760px, calc(100vw - 220px - 32px));
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  box-shadow:
+    0 2px 6px rgb(60 30 10 / 8%),
+    0 18px 50px rgb(60 30 10 / 16%);
+  backdrop-filter: blur(16px) saturate(1.4);
+  transform: translateX(-50%);
+}
+
+.dock-listening {
+  border-color: var(--accent);
+  box-shadow: 0 18px 54px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.dock-compact {
+  left: auto;
+  right: 20px;
+  width: auto;
+  padding: 6px;
+  border-radius: 50%;
+  transform: none;
+}
+
+.dock-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.orb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, var(--panel), var(--tint));
+  box-shadow:
+    0 5px 16px color-mix(in srgb, var(--accent) 22%, transparent),
+    inset 0 0 0 1px var(--tint-edge);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.5);
+}
+
+.dock-compact .orb {
+  width: 42px;
+  height: 42px;
+}
+
+.orb:hover {
+  transform: scale(1.06);
+}
+
+.dock-listening .orb {
+  animation: orb-listen 1.2s ease-in-out infinite;
+}
+
+.dock-thinking .orb .grape-mark,
+.dock-answering .orb .grape-mark {
+  animation: orb-think 1.4s ease-in-out infinite;
+}
+
+.dock-speaking .orb .grape-mark {
+  animation: orb-think 0.8s ease-in-out infinite;
+}
+
+@keyframes orb-listen {
+  50% {
+    box-shadow:
+      0 0 0 8px color-mix(in srgb, var(--accent) 22%, transparent),
+      inset 0 0 0 1px var(--tint-edge);
+  }
+}
+
+@keyframes orb-think {
+  50% {
+    transform: scale(1.1) rotate(-6deg);
+  }
+}
+
+.dock-body {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dock-line {
+  display: grid;
+  gap: 4px;
+  animation: dock-line-in 0.35s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes dock-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.dock-line p {
+  margin: 0;
+}
+
+.dock-reply {
+  max-height: 30vh;
+  overflow-y: auto;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dock-heard {
+  font-size: 1.05rem;
+  font-style: italic;
+}
+
+.dock-you {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-you span {
+  font-weight: 600;
+}
+
+.dock-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.dock-warning {
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+.dock-warning ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.dock-warning code {
+  overflow-wrap: anywhere;
+}
+
+.dock-notice {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.dock-problem {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.dock-form {
+  display: grid;
+  gap: 4px;
+}
+
+.dock-field {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.dock-field textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  /* About seven lines, then the field scrolls. */
+  max-height: calc(7 * 1.45em + 20px);
+  padding: 10px 14px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--input);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.45;
+  resize: none;
+}
+
+.dock-field textarea:focus {
+  border-color: var(--tint-edge);
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.dock-field .button {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+}
+
+.dock-field-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 0;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.dock-count {
+  margin-left: auto;
+}
+
+@media (pointer: coarse) {
+  .dock-field-keys > span:not(.dock-count) {
+    display: none;
+  }
+}
+
+.dock-count.is-full {
+  color: var(--danger);
+}
+
+.dock-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 220px;
+}
+
+.dock-tools .icon-button {
+  width: 34px;
+  height: 34px;
+}
+
+.dock-tools .icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.icon-button.is-on {
+  border-color: var(--tint-edge);
+  background: var(--tint);
+  color: var(--accent);
+}
+
+.dock-hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 0 4px;
+}
+
+.dock-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.dock-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dock-history {
+  display: grid;
+  gap: 8px;
+  max-height: 46vh;
+  padding: 4px 4px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.dock-history header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dock-history h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.dock-history-list {
+  display: grid;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.dock-history p {
+  margin: 0;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 7px 12px;
+  border-radius: 14px;
+  background: var(--raised);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.bubble-user {
+  justify-self: end;
+  border-bottom-right-radius: 4px;
+  background: var(--tint);
+}
+
+.bubble-assistant {
+  justify-self: start;
+  border-bottom-left-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-listening .orb,
+  .dock .grape-mark,
+  .dock-line {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .dock {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    transform: none;
+  }
+
+  .dock-compact {
+    left: auto;
+    right: 12px;
+  }
+
+  .dock-tools {
+    max-width: 112px;
+  }
+
+  .orb {
+    width: 44px;
+    height: 44px;
+  }
+
+  .dock-reply {
+    max-height: 22vh;
+    font-size: 0.95rem;
+  }
+
+  .dock-keys {
+    display: none;
+  }
 }

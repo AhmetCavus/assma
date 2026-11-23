@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import { notFound } from "./errors.js";
 import { ModelError } from "./inference/provider.js";
 
-export type JobProgress = { found: number; part: number; parts: number };
+export type JobProgress = {
+  found: number;
+  part: number;
+  parts: number;
+  /** Text the task has produced so far, for tasks that show it while they work. */
+  text?: string;
+};
 
 /** One model task. Reports progress as it goes and stops when `signal` aborts. */
 export type ModelTask<T> = (

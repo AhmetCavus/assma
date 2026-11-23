@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
-import { after, before, test } from "node:test";
+import { after, before, beforeEach, test } from "node:test";
 import { CV_IMPORT_LIMITS } from "@assma/shared";
 import { readCv } from "../src/experience/cvImport.reader.ts";
 import { OllamaProvider } from "../src/platform/inference/ollama.ts";
@@ -65,15 +65,17 @@ before(async () => {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : 0;
-  useInferenceProvider(
-    new OllamaProvider({
-      baseUrl: `http://127.0.0.1:${port}`,
-      model: "qwen3.5:4b",
-      keepAlive: "30m",
-    }),
-  );
+  provider = new OllamaProvider({
+    baseUrl: `http://127.0.0.1:${port}`,
+    model: "qwen3.5:4b",
+    keepAlive: "30m",
+  });
 });
 
+// Other test files share the process and choose their own provider.
+beforeEach(() => useInferenceProvider(provider));
+
+let provider: OllamaProvider;
 after(() => server.close());
 
 test("a long CV is read in parts within the context and merged", async () => {

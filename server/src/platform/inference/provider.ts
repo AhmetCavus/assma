@@ -47,7 +47,9 @@ export type ModelErrorCode =
   /** The answer stopped at the output limit, so its JSON is incomplete. */
   | "truncated"
   /** The model declined to answer. */
-  | "refused";
+  | "refused"
+  /** The model got stuck repeating whitespace instead of finishing the JSON. */
+  | "repetition";
 
 const UNAVAILABLE: ReadonlySet<ModelErrorCode> = new Set([
   "unreachable",
@@ -101,11 +103,53 @@ export function mentionsContextLength(message: string): boolean {
   return CONTEXT_MESSAGE.test(message);
 }
 
+/**
+ * Structured decoding allows any whitespace between JSON tokens, and some local models,
+ * once their answer is complete, keep producing it instead of closing the object, until the
+ * context is full. More than this many whitespace characters in a row ends the request.
+ */
+export const RUNAWAY_WHITESPACE = 400;
+
+const trailingWhitespace = (text: string) => text.length - text.trimEnd().length;
+
+/** Ends a stream that only produces whitespace any more; works for every provider. */
+export function guardRunaway(provider: InferenceProvider): InferenceProvider {
+  return {
+    modelId: provider.modelId,
+    modelAvailable: (signal) => provider.modelAvailable(signal),
+    async *streamStructured(request, signal) {
+      const stop = new AbortController();
+      const combined = signal ? AbortSignal.any([signal, stop.signal]) : stop.signal;
+      let blank = 0;
+      try {
+        for await (const fragment of provider.streamStructured(request, combined)) {
+          blank = fragment.trim() ? trailingWhitespace(fragment) : blank + fragment.length;
+          if (blank > RUNAWAY_WHITESPACE) {
+            stop.abort();
+            throw new ModelError(
+              "repetition",
+              `${provider.modelId} kept writing whitespace instead of finishing its answer; a stronger model, or a server option that forbids free whitespace in JSON, helps.`,
+            );
+          }
+          yield fragment;
+        }
+      } catch (error) {
+        if (stop.signal.aborted && !signal?.aborted && !(error instanceof ModelError)) {
+          throw new ModelError("repetition", "The model got stuck and was stopped.");
+        }
+        throw error;
+      } finally {
+        stop.abort();
+      }
+    },
+  };
+}
+
 let active: InferenceProvider | null = null;
 
 /** Called once at startup with the configured provider (tests pass their own). */
 export function useInferenceProvider(provider: InferenceProvider): void {
-  active = provider;
+  active = guardRunaway(provider);
 }
 
 export function inference(): InferenceProvider {

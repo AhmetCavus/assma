@@ -13,6 +13,7 @@ import { cvFileName, cvMarkdown, cvPdf, download } from "../lib/cvDocument";
 import { documentOfSnapshot } from "../lib/cvDraft";
 import { setFlash, takeFlash } from "../lib/flash";
 import type { Preferences } from "../lib/preferences";
+import { useAssistantPage } from "../lib/assistant";
 import { projectsChanged } from "../lib/projects";
 import { linkHandler, navigate } from "../lib/router";
 import type { Session } from "../lib/session";
@@ -91,6 +92,19 @@ export function ApplicationPage({
       active = false;
     };
   }, [api, id]);
+
+  /** The assistant notes what the person tells it; errors throw so it can say so. */
+  async function addNote(note: string) {
+    const updated = await api.addApplicationEvent(id, {
+      kind: "note",
+      text: note,
+      at: new Date().toISOString(),
+    });
+    show(updated);
+    setStatus(text.added);
+    applicationsChanged();
+  }
+  useAssistantPage({ services: application ? { add_note: addNote } : {} });
 
   if (!application) {
     return (

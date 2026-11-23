@@ -16,6 +16,7 @@ import {
 import { useApplications } from "../lib/applications";
 import { takeAutoAssess } from "../lib/flash";
 import type { Preferences } from "../lib/preferences";
+import { useAssistantPage } from "../lib/assistant";
 import { projectsChanged } from "../lib/projects";
 import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
@@ -150,6 +151,16 @@ export function ProjectFitPage({
       fail(failure);
     }
   }
+
+  // The assistant can run the check again when there is something to compare.
+  const assistantCanAssess =
+    project !== null &&
+    experience !== null &&
+    requirementsOf(project).length > 0 &&
+    experience.references.length > 0;
+  useAssistantPage({
+    services: assistantCanAssess && !job ? { assess_fit: startAssessment } : {},
+  });
 
   if (!project || !experience) {
     return (

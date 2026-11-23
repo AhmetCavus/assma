@@ -40,6 +40,7 @@ import {
   type ApplicationInput,
   type EventInput,
 } from "../applications.js";
+import { assistantJobSchema, type AssistantInput } from "../assistant.js";
 
 export const API_PREFIX = "/api/assma";
 
@@ -177,6 +178,18 @@ export class AssmaApi {
 
   changeFinding(projectId: string, index: number, change: FindingChange) {
     return this.call("put", `/projects/${projectId}/fit/findings/${index}`, projectSchema, change);
+  }
+
+  askAssistant(input: AssistantInput) {
+    return this.call("post", "/assistant", assistantJobSchema, input);
+  }
+
+  assistantJob(id: string) {
+    return this.call("get", `/assistant/${id}`, assistantJobSchema);
+  }
+
+  cancelAssistant(id: string) {
+    return this.call("delete", `/assistant/${id}`, z.object({ id: z.string() }));
   }
 
   saveCv(projectId: string, draft: CvDraftInput) {

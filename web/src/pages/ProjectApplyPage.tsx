@@ -11,6 +11,7 @@ import {
   type Experience,
   type Project,
 } from "@assma/shared";
+import { useAssistantPage } from "../lib/assistant";
 import { applicationsChanged, isoOf, localDateTime, pdfBlob } from "../lib/applications";
 import { cvFileName, cvPdf, download } from "../lib/cvDocument";
 import { documentOf, initialDraft, resolveDraft } from "../lib/cvDraft";
@@ -21,6 +22,9 @@ import { linkHandler, navigate } from "../lib/router";
 import type { Session } from "../lib/session";
 
 type Email = { to: string; subject: string; message: string };
+type EmailText = { subject: string; message: string };
+
+const textOf = (value: Email): EmailText => ({ subject: value.subject, message: value.message });
 
 /**
  * Apply for a project by email or record a portal submission. The email leaves as an .eml
@@ -50,6 +54,11 @@ export function ProjectApplyPage({
   const [busy, setBusy] = useState(false);
   /** The PDF made once and reused, so the .eml and the recorded file are the same bytes. */
   const [pdf, setPdf] = useState<{ key: string; bytes: Uint8Array } | null>(null);
+  /** Earlier and later versions of subject and message, around the one being edited. */
+  const [versions, setVersions] = useState<{ past: EmailText[]; future: EmailText[] }>({
+    past: [],
+    future: [],
+  });
 
   function fail(failure: unknown) {
     const apiError = toApiError(failure);
@@ -108,6 +117,24 @@ export function ProjectApplyPage({
         : null,
     [project, experience, locale],
   );
+
+  /** A new version from the assistant; the current text, with its manual edits, is kept. */
+  function revise(next: EmailText): boolean {
+    if (next.subject === email.subject.trim() && next.message === email.message.trim()) {
+      return false;
+    }
+    setVersions((current) => ({ past: [...current.past, textOf(email)], future: [] }));
+    setEmail((current) => ({ ...current, ...next }));
+    setErrors({});
+    return true;
+  }
+
+  // The assistant revises the message on request; the arrows at the message undo it.
+  useAssistantPage({
+    context:
+      choice && channel === "email" ? { email: textOf(email), cvLanguage: choice.language } : {},
+    services: choice && channel === "email" ? { revise_email: revise } : {},
+  });
 
   if (!project || !experience || !choice) {
     return (
@@ -228,9 +255,64 @@ export function ProjectApplyPage({
       navigate(`/applications/${application.id}`);
     });
 
+  function stepVersion(direction: -1 | 1) {
+    const source = direction < 0 ? versions.past : versions.future;
+    const target = direction < 0 ? source.at(-1) : source[0];
+    if (!target) {
+      return;
+    }
+    setVersions(
+      direction < 0
+        ? { past: versions.past.slice(0, -1), future: [textOf(email), ...versions.future] }
+        : { past: [...versions.past, textOf(email)], future: versions.future.slice(1) },
+    );
+    setEmail({ ...email, ...target });
+    setErrors({});
+  }
+
+  const versionCount = versions.past.length + 1 + versions.future.length;
+  const versionBar = versionCount > 1 && (
+    <div
+      className="version-bar"
+      role="group"
+      aria-label={text.versions.of(versions.past.length + 1, versionCount)}
+    >
+      <button
+        type="button"
+        className="icon-button"
+        disabled={versions.past.length === 0}
+        onClick={() => stepVersion(-1)}
+        aria-label={text.versions.previous}
+        title={text.versions.previous}
+      >
+        ‹
+      </button>
+      <span className="muted small">
+        {text.versions.of(versions.past.length + 1, versionCount)}
+      </span>
+      <button
+        type="button"
+        className="icon-button"
+        disabled={versions.future.length === 0}
+        onClick={() => stepVersion(1)}
+        aria-label={text.versions.next}
+        title={text.versions.next}
+      >
+        ›
+      </button>
+    </div>
+  );
+
   const field = (name: keyof Email, label: string, multiline = false) => (
     <label>
-      {label}
+      {multiline ? (
+        <span className="label-row">
+          {label}
+          {versionBar}
+        </span>
+      ) : (
+        label
+      )}
       {multiline ? (
         <textarea
           rows={12}

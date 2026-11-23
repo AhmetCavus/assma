@@ -30,6 +30,7 @@ import {
 } from "../lib/cvDocument";
 import { EMPTY_DRAFT, initialDraft, type Draft } from "../lib/cvDraft";
 import type { Preferences } from "../lib/preferences";
+import { useAssistantPage } from "../lib/assistant";
 import { projectsChanged } from "../lib/projects";
 import { linkHandler, navigate } from "../lib/router";
 import type { Session } from "../lib/session";
@@ -84,6 +85,25 @@ export function ProjectCvPage({
   }, [api, id]);
 
   const rows = useMemo(() => (experience ? skillRows(experience.references) : []), [experience]);
+
+  // The assistant rewrites the summary in the draft; saving stays the person's step.
+  useAssistantPage({
+    context:
+      project && experience ? { summary: draft.summary, cvLanguage: draft.language ?? locale } : {},
+    services:
+      project && experience
+        ? {
+            revise_summary: (summary: string) => {
+              if (summary === draft.summary.trim()) {
+                return false;
+              }
+              setDraft((current) => ({ ...current, summary }));
+              setStatus("");
+              return true;
+            },
+          }
+        : {},
+  });
 
   if (!project || !experience) {
     return (
