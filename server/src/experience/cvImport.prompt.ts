@@ -121,13 +121,3 @@ export function cvMessages(text: string, part = 1, parts = 1) {
     { role: "user" as const, content: `<cv>\n${text}\n</cv>` },
   ];
 }
-
-/**
- * Context for the instructions, one part of the CV (at most 12,000 characters, under 4,000
- * tokens even for dense text) and a long answer. Never below what the text needs, so Ollama
- * does not silently cut the prompt.
- */
-export function contextFor(text: string): number {
-  const estimate = Math.ceil(text.length / 3) + 4500;
-  return Math.max(6144, Math.ceil(estimate / 1024) * 1024);
-}

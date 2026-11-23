@@ -11,12 +11,11 @@ import {
   type FitJob,
   type Project,
 } from "@assma/shared";
-import { contextFor } from "../experience/cvImport.prompt.js";
 import * as experience from "../experience/experience.repository.js";
 import type { Account } from "../platform/access.js";
 import { AssmaError, notFound } from "../platform/errors.js";
 import { modelJobs, type JobView } from "../platform/modelJobs.js";
-import { streamStructured } from "../platform/ollama.js";
+import { inference } from "../platform/inference/provider.js";
 import { RateLimiter } from "../platform/rateLimit.js";
 import { FIT_SCHEMA, fitMessages } from "./fit.prompt.js";
 import * as repository from "./project.repository.js";
@@ -54,10 +53,8 @@ export async function assess(
   if (requirements.length > 0 && references.length > 0) {
     const messages = fitMessages(requirements, references);
     let output = "";
-    for await (const delta of streamStructured(
-      messages,
-      FIT_SCHEMA,
-      { numCtx: contextFor(messages.map((message) => message.content).join("\n")) },
+    for await (const delta of inference().streamStructured(
+      { messages, schema: FIT_SCHEMA },
       AbortSignal.any([signal, AbortSignal.timeout(ASSESSMENT_TIMEOUT_MS)]),
     )) {
       output += delta;

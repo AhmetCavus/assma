@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
+  readonly VITE_SOURCE_URL?: string;
   readonly VITE_LEGAL_NAME?: string;
   readonly VITE_LEGAL_ADDRESS?: string;
   readonly VITE_LEGAL_REPRESENTATIVE?: string;

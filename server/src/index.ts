@@ -11,6 +11,16 @@ if (problems.length > 0) {
   throw new Error(`assma configuration: ${problems.join("; ")}.`);
 }
 
+// The model provider is chosen once; every model task goes through it.
+{
+  const { inferenceSettings, createInferenceProvider, describeSettings } =
+    await import("./platform/inference/config.js");
+  const { useInferenceProvider } = await import("./platform/inference/provider.js");
+  const { settings } = inferenceSettings(process.env);
+  useInferenceProvider(createInferenceProvider(settings!));
+  console.log(`assma model: ${describeSettings(settings!)}`);
+}
+
 // Yappio reads its configuration while loading, so it is imported after the checks above.
 const express = (await import("express")).default;
 const { Yappio } = await import("yappio");

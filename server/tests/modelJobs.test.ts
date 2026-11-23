@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ModelJobs, type ModelTask } from "../src/platform/modelJobs.ts";
-import { contextFor } from "../src/experience/cvImport.prompt.ts";
+import { contextFor } from "../src/platform/inference/ollama.ts";
 
 /** Tasks the test finishes by hand. */
 function controlled() {
@@ -105,7 +105,11 @@ test("a failed task reports a code, not the error", async () => {
 });
 
 test("the model context always fits one part, so Ollama never cuts the prompt", () => {
-  assert.equal(contextFor("x".repeat(100)), 6144);
-  const part = "x".repeat(12_000);
-  assert.ok(contextFor(part) >= 12_000 / 3 + 4500);
+  const ask = (text: string) => [
+    { role: "system" as const, content: "instructions ".repeat(400) },
+    { role: "user" as const, content: text },
+  ];
+  // The instructions are covered by the fixed margin, so short requests share one size.
+  assert.equal(contextFor(ask("x".repeat(100))), 6144);
+  assert.ok(contextFor(ask("x".repeat(12_000))) >= 12_000 / 3 + 4500);
 });

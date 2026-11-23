@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { notFound } from "./errors.js";
+import { ModelError } from "./inference/provider.js";
 
 export type JobProgress = { found: number; part: number; parts: number };
 
@@ -173,6 +174,10 @@ export class ModelJobs {
       });
       job.state = "done";
     } catch (error) {
+      if (error instanceof ModelError && !job.controller.signal.aborted) {
+        // The operator's view: what failed and what to check, never the request's content.
+        console.warn(`assma model task ${job.kind.split(":")[0]} failed: ${error.describe()}`);
+      }
       job.state = "failed";
       job.error = job.controller.signal.aborted
         ? "cancelled"

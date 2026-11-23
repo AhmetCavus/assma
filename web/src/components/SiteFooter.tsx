@@ -105,7 +105,7 @@ export function SiteFooter({
               ellma
             </a>
             <a href={GITHUB_URL} target="_blank" rel="noopener">
-              GitHub
+              {text.sourceCode}
             </a>
           </>
         )}

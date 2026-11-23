@@ -153,6 +153,7 @@ export const en = {
       cookies: "Cookie settings",
       imprint: "Imprint",
       poweredBy: "Powered by",
+      sourceCode: "Source code (AGPL)",
     },
     back: "Back to assma",
     updated: "Last updated: 21 November 2026",

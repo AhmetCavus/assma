@@ -1,7 +1,13 @@
 import { LOCALES, type Locale } from "@assma/shared";
 import type { Preferences } from "../lib/preferences";
 
-export const GITHUB_URL = "https://github.com/AhmetCavus/assma";
+/**
+ * Where the source code of this installation is published. The AGPL asks anyone who runs a
+ * modified assma for others to offer them that modified source, so a fork sets its own
+ * repository in `VITE_SOURCE_URL`.
+ */
+export const GITHUB_URL =
+  import.meta.env.VITE_SOURCE_URL?.trim() || "https://github.com/AhmetCavus/assma";
 
 export function GitHubLink({
   preferences,

@@ -78,7 +78,38 @@ assert.ok(compose.services.api.environment.DB_URI.includes("DB_URI_DOCKER"));
 // The CV import reaches the shared Ollama container over dev-proxy, never the host port.
 assert.ok(compose.services.api.environment.OLLAMA_URL.includes("OLLAMA_URL_DOCKER"));
 assert.ok(compose.services.api.environment.OLLAMA_URL.includes("http://ollama:11434"));
+// The provider settings reach the API; keys only through ../.env, never written into Compose.
+const apiEnvironment = compose.services.api.environment as Record<string, string>;
+for (const name of ["LLM_PROVIDER", "LLM_MODEL", "LLM_LOCAL_PROTOCOL", "LLM_BASE_URL"]) {
+  assert.ok(apiEnvironment[name]?.includes(name), `api environment ${name}`);
+}
+assert.ok(apiEnvironment.LLM_BASE_URL!.includes("LLM_BASE_URL_DOCKER"));
+for (const name of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY"]) {
+  assert.ok(!(name in apiEnvironment), `${name} must come from .env, not Compose`);
+}
+assert.deepEqual(compose.services.api.env_file, ["../.env"]);
 const example = await readFile(".env.example", "utf8");
+// The example selects a provider the API accepts: the legacy Ollama default, unchanged.
+{
+  const { parse: parseEnv } = await import("dotenv");
+  const { inferenceSettings } = await import("../server/src/platform/inference/config.ts");
+  const fromExample = inferenceSettings(parseEnv(example));
+  assert.deepEqual(fromExample.problems, []);
+  assert.equal(fromExample.settings?.provider, "local");
+  for (const name of [
+    "LLM_PROVIDER",
+    "LLM_MODEL",
+    "LLM_LOCAL_PROTOCOL",
+    "LLM_BASE_URL",
+    "LLM_BASE_URL_DOCKER",
+    "LLM_API_KEY",
+    "LLM_MAX_OUTPUT_TOKENS",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+  ]) {
+    assert.match(example, new RegExp(`^${name}=`, "m"), `.env.example lists ${name}`);
+  }
+}
 assert.match(example, /^DB_URI_DOCKER=mongodb:\/\/[^@]+@shared-mongo:27017\/assma\?/m);
 // The API must accept both browser apps, and each image must build its own site.
 assert.ok(compose.services.api.environment.ALLOWED_ORIGINS.includes("ASSMA_ADMIN_URL"));
@@ -87,6 +118,7 @@ assert.equal(compose.services.web.build.target, "runtime");
 for (const name of ["NAME", "ADDRESS", "REPRESENTATIVE", "EMAIL", "PHONE", "REGISTER", "VAT_ID"]) {
   assert.ok(`VITE_LEGAL_${name}` in compose.services.web.build.args, `VITE_LEGAL_${name}`);
 }
+assert.ok("VITE_SOURCE_URL" in compose.services.web.build.args, "VITE_SOURCE_URL");
 assert.equal(compose.services.admin.build.target, "admin");
 console.log(
   "Compose, routers, ports, health checks, manifest and shared Mongo references: passed.",

@@ -118,7 +118,7 @@ assma adds its routes under `/api/assma` (account, experience, projects, applica
 
 - **Yappio** (`yappio@1.3.1`, `yappio-client@1.0.1` from Verdaccio).
 - **Server**: Express via Yappio, Mongoose collections on `shared-mongo` / database `assma`.
-- **Model**: Ollama `qwen3.5:4b` (configurable `OLLAMA_MODEL`), one model task at a time through a shared queue, answers checked against a JSON schema.
+- **Model**: one provider for the whole API, chosen with `LLM_PROVIDER` (see `.env.example`): a self-hosted model through Ollama (the default, `qwen3.5:4b` on the shared container) or an OpenAI-compatible server such as vLLM, OpenAI, or Claude. Every provider streams JSON constrained to assma's schemas (`server/src/platform/inference`); one model task runs at a time through a shared queue, and every answer is validated again. `docker exec assma-api node dist/scripts/inferenceSmoke.js` checks the configured model.
 - **Web**: React 18 + Vite, no UI framework. pdf.js and mammoth read imported CVs, pdf-lib with the embedded Inter font writes the CV PDF.
 - **Admin**: a second small React + Vite app (`admin/`) on its own host.
 - **Shared**: zod contracts, the EN/DE copy and the typed API client, used by server, web and admin.
@@ -136,6 +136,8 @@ npm run dev                      # API :4100 + web :5182 + admin :5183
 ```
 
 The ports differ from ellma's (4000, 5180, 5181), so both run side by side.
+
+Install with `npm ci`, which takes every package exactly as recorded in `package-lock.json` and checks its hash. Do not point `.npmrc` at the public registry to get past a failing install: the Yappio package names are not published there, and a package someone else published under the same name would be installed instead.
 
 ## Verify
 
@@ -177,3 +179,23 @@ Yoster lists assma once `.env` exists.
 - **One model task at a time**: CV imports, listing captures and fit checks share one queue, so the CPU is never overloaded.
 - **Links**: "Load from link" fetches public pages only and refuses private and internal addresses, so a link cannot reach the database or other containers. Pages that need a login or JavaScript ask you to paste the text instead.
 - **Registration is open**. Sign-in attempts are limited in the API; registration is not, so consider rate limiting at Traefik before going public.
+
+## Self-hosting
+
+The code is open, but **assma cannot yet be built outside yappai**: it depends on Yappio, which stays private and is only served by our internal registry. You are welcome to read, review and learn from the code, and to report problems.
+
+If you run a copy for other people, you are the operator of that copy:
+
+- Enter your own operator details (`VITE_LEGAL_*`) and review the privacy notice and the terms in `shared/src/locales` (`legal`); they describe yappai's installation.
+- Point `VITE_SOURCE_URL` to the published source of your copy. The footer links to it as required by the AGPL.
+- Give your copy its own name and do not present it as the yappai installation at `assma.yappai.de`.
+
+## Security
+
+Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not as a public issue.
+
+## License
+
+assma is free software under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`). You may use, study, change and share it. If you change assma and let others use it over a network, you must offer them the source code of your changed version under the same license.
+
+Bundled third-party parts keep their own licenses, among them Inter (SIL Open Font License), pdf.js (Apache 2.0), pdf-lib (MIT) and mammoth (BSD-2-Clause). Yappio is not part of this repository and is not covered by this license; [NOTICE](NOTICE) grants the additional permission to combine assma with it.

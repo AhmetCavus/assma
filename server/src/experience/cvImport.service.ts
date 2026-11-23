@@ -11,7 +11,7 @@ import {
 } from "@assma/shared";
 import type { Account } from "../platform/access.js";
 import { AssmaError } from "../platform/errors.js";
-import { modelAvailable, ollamaSettings } from "../platform/ollama.js";
+import { cachedAvailability, inference } from "../platform/inference/provider.js";
 import { RateLimiter } from "../platform/rateLimit.js";
 import { modelJobs, type JobView } from "../platform/modelJobs.js";
 import { readCv } from "./cvImport.reader.js";
@@ -36,7 +36,7 @@ function toCvJob(view: JobView<CvSuggestions>): CvImportJob {
 const importsPerAccount = new RateLimiter(20, 60 * 60 * 1000);
 
 export async function status(): Promise<CvImportStatus> {
-  return { available: await modelAvailable(), model: ollamaSettings().model };
+  return { available: await cachedAvailability(), model: inference().modelId };
 }
 
 export async function start(account: Account, input: unknown) {

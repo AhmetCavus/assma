@@ -154,6 +154,7 @@ export const de: Copy = {
       cookies: "Cookie-Einstellungen",
       imprint: "Impressum",
       poweredBy: "Powered by",
+      sourceCode: "Quellcode (AGPL)",
     },
     back: "Zurück zu assma",
     updated: "Stand: 21. November 2026",

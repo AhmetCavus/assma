@@ -3,6 +3,8 @@ import { createServer, type Server } from "node:http";
 import { after, before, test } from "node:test";
 import { CV_IMPORT_LIMITS } from "@assma/shared";
 import { readCv } from "../src/experience/cvImport.reader.ts";
+import { OllamaProvider } from "../src/platform/inference/ollama.ts";
+import { useInferenceProvider } from "../src/platform/inference/provider.ts";
 
 /** A stand-in for Ollama's streaming /api/chat that answers per part. */
 let server: Server;
@@ -62,7 +64,14 @@ before(async () => {
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
-  process.env.OLLAMA_URL = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+  const port = typeof address === "object" && address ? address.port : 0;
+  useInferenceProvider(
+    new OllamaProvider({
+      baseUrl: `http://127.0.0.1:${port}`,
+      model: "qwen3.5:4b",
+      keepAlive: "30m",
+    }),
+  );
 });
 
 after(() => server.close());

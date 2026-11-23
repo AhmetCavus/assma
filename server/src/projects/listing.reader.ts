@@ -1,7 +1,6 @@
 import { normaliseListing, type ListingSuggestions } from "@assma/shared";
-import { contextFor } from "../experience/cvImport.prompt.js";
 import type { JobProgress } from "../platform/modelJobs.js";
-import { streamStructured } from "../platform/ollama.js";
+import { inference } from "../platform/inference/provider.js";
 import { LISTING_SCHEMA, listingMessages } from "./listing.prompt.js";
 
 const LISTING_TIMEOUT_MS = 10 * 60 * 1000;
@@ -14,10 +13,8 @@ export async function readListing(
 ): Promise<ListingSuggestions> {
   progress({ found: 0, part: 1, parts: 1 });
   let output = "";
-  for await (const delta of streamStructured(
-    listingMessages(text),
-    LISTING_SCHEMA,
-    { numCtx: contextFor(text) },
+  for await (const delta of inference().streamStructured(
+    { messages: listingMessages(text), schema: LISTING_SCHEMA },
     AbortSignal.any([signal, AbortSignal.timeout(LISTING_TIMEOUT_MS)]),
   )) {
     output += delta;

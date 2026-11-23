@@ -4,7 +4,7 @@ import {
   splitCvText,
   type CvSuggestions,
 } from "@assma/shared";
-import { streamStructured } from "../platform/ollama.js";
+import { inference } from "../platform/inference/provider.js";
 import type { JobProgress } from "../platform/modelJobs.js";
 
 export type CvReader = (
@@ -12,7 +12,7 @@ export type CvReader = (
   signal: AbortSignal,
   progress: (update: JobProgress) => void,
 ) => Promise<CvSuggestions>;
-import { contextFor, CV_SCHEMA, cvMessages } from "./cvImport.prompt.js";
+import { CV_SCHEMA, cvMessages } from "./cvImport.prompt.js";
 
 /**
  * One part may take this long. Writing dominates (about 10–12 seconds per position on the
@@ -33,10 +33,8 @@ export const readCv: CvReader = async (text, signal, progress) => {
     progress({ found, part: index + 1, parts: parts.length });
     const partSignal = AbortSignal.any([signal, AbortSignal.timeout(PART_TIMEOUT_MS)]);
     let output = "";
-    for await (const delta of streamStructured(
-      cvMessages(part, index + 1, parts.length),
-      CV_SCHEMA,
-      { numCtx: contextFor(part) },
+    for await (const delta of inference().streamStructured(
+      { messages: cvMessages(part, index + 1, parts.length), schema: CV_SCHEMA },
       partSignal,
     )) {
       output += delta;

@@ -1,3 +1,5 @@
+import { inferenceSettings } from "./platform/inference/config.js";
+
 /** The logical database assma owns on shared-mongo. */
 export const DATABASE_NAME = "assma";
 export const DEFAULT_PORT = "4100";
@@ -26,6 +28,7 @@ export function configurationProblems(env: NodeJS.ProcessEnv): string[] {
   if (env.NODE_ENV === "production" && databaseName !== null && databaseName !== DATABASE_NAME) {
     problems.push(`Production must use the ${DATABASE_NAME} logical database on shared-mongo`);
   }
+  problems.push(...inferenceSettings(env).problems);
   return problems;
 }
 
