@@ -5,6 +5,7 @@ export * from "./projects.js";
 export * from "./fit.js";
 export * from "./applications.js";
 export * from "./assistant.js";
+export * from "./progress.js";
 export * from "./eml.js";
 export * from "./skills.js";
 export * from "./cvDesign.js";

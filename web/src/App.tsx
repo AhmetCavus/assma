@@ -15,6 +15,7 @@ import { ProjectApplyPage } from "./pages/ProjectApplyPage";
 import { ProjectCvPage } from "./pages/ProjectCvPage";
 import { ProjectEditorPage } from "./pages/ProjectEditorPage";
 import { ProjectFitPage } from "./pages/ProjectFitPage";
+import { ProgressPage } from "./pages/ProgressPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 
 const WORKSPACE_PATHS = [
@@ -23,6 +24,7 @@ const WORKSPACE_PATHS = [
   "/projects/new",
   "/experience",
   "/experience/import",
+  "/progress",
 ];
 const PROJECT_PATH = /^\/projects\/([a-f0-9]{24})(\/edit|\/cv|\/apply)?$/;
 const APPLICATION_PATH = /^\/applications\/([a-f0-9]{24})$/;
@@ -109,6 +111,8 @@ export default function App() {
           <CvImportPage session={session} preferences={preferences} />
         ) : path === "/experience" ? (
           <ExperiencePage session={session} preferences={preferences} />
+        ) : path === "/progress" ? (
+          <ProgressPage session={session} preferences={preferences} />
         ) : (
           <DashboardPage session={session} preferences={preferences} />
         )}

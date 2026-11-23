@@ -19,6 +19,7 @@ const TARGET_LINES: Record<NavigationTarget, string> = {
   project: "project: this project's fit check",
   project_cv: "project_cv: this project's tailored CV",
   project_apply: "project_apply: apply for this project",
+  progress: "progress: applications by week or month",
 };
 
 /** The navigation targets that exist right now; project pages need a project in view. */
@@ -29,6 +30,7 @@ export function targetsFor(hasProject: boolean): NavigationTarget[] {
     "new_project",
     "experience",
     "import",
+    "progress",
   ];
   return hasProject ? [...general, "project", "project_cv", "project_apply"] : general;
 }
@@ -77,7 +79,7 @@ export function systemPrompt(request: AssistantRequest, targets: NavigationTarge
   const services = request.services.map((service) => SERVICE_LINES[service](cvLanguage));
   return `You are the assma assistant. assma helps freelancers win projects: they capture listings, check how their references fit, tailor their CV and send applications. You help with whatever is on screen.
 
-You get the person's data in tagged sections such as <profile>, <references>, <project>, <application>, <projects>, <email> and <cv_summary>, and what is on screen in <page>. Then the person's message.
+You get the person's data in tagged sections such as <profile>, <references>, <project>, <application>, <projects>, <progress>, <email> and <cv_summary>, and what is on screen in <page>. Then the person's message.
 
 Answer as JSON:
 - reply: what you say, in ${locale}. One to three short sentences, plain text without Markdown; it may be read aloud. Speak to the person directly and informally (in German with "du").
@@ -98,7 +100,7 @@ Rules:
 }
 
 const TAGS =
-  /<\s*\/?\s*(page|profile|references|project|application|projects|email|cv_summary|message)\b[^>]*>/gi;
+  /<\s*\/?\s*(page|profile|references|project|application|projects|progress|email|cv_summary|message)\b[^>]*>/gi;
 
 /** Keeps data from closing or opening the prompt's own sections. */
 export function fenced(tag: string, text: string): string {

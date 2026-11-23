@@ -478,6 +478,9 @@ export function AssmaDock({ preferences }: { preferences: Preferences }) {
                   <kbd>V</kbd> {text.keys.speak}
                 </span>
               )}
+              <button type="button" className="dock-guide" onClick={() => assistant.setGuide(true)}>
+                <kbd>?</kbd> {text.keys.all}
+              </button>
             </span>
           )}
           <span className="dock-chips">

@@ -212,7 +212,7 @@ export function ExperiencePage({
     formatPeriod(reference.start, reference.end, locale, text.today);
 
   return (
-    <div className="page">
+    <div className="page wide">
       <div className="page-header">
         <div>
           <h1>{text.title}</h1>

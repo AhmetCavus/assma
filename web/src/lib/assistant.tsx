@@ -70,6 +70,8 @@ type Assistant = {
   speakerSupported: boolean;
   speakReplies: boolean;
   writing: boolean;
+  /** Whether the keyboard guide is open. */
+  guide: boolean;
   send: (text: string, viaVoice?: boolean) => Promise<void>;
   talk: () => void;
   stop: () => void;
@@ -77,6 +79,7 @@ type Assistant = {
   clear: () => void;
   toggleSpeak: () => void;
   setWriting: (on: boolean) => void;
+  setGuide: (open: boolean) => void;
   register: (registration: MutableRefObject<PageRegistration>, services: string) => () => void;
 };
 
@@ -106,7 +109,9 @@ export function viewOf(path: string): Assistant["view"] {
           ? "import"
           : path.startsWith("/experience")
             ? "experience"
-            : "dashboard";
+            : path.startsWith("/progress")
+              ? "progress"
+              : "dashboard";
   return { page, projectId: null, applicationId: null };
 }
 
@@ -129,8 +134,18 @@ function pathOf(target: NavigationTarget, view: Assistant["view"]): string | nul
       return project ? `/projects/${project}/cv` : null;
     case "project_apply":
       return project ? `/projects/${project}/apply` : null;
+    case "progress":
+      return "/progress";
   }
 }
+
+/** Keys 1–4 open the pages in navigation order. */
+const PAGE_KEYS: Record<string, string> = {
+  "1": "/dashboard",
+  "2": "/projects",
+  "3": "/experience",
+  "4": "/progress",
+};
 
 const HISTORY_KEY = "assma.assistant.history";
 const SPEAK_KEY = "assma.assistant.speak";
@@ -165,8 +180,10 @@ function restoreHistory(): AssistantTurn[] {
   }
 }
 
+// Focus left on a dialog that just closed does not count: the keys belong to the page again.
 const isEditable = (target: EventTarget | null) =>
   target instanceof Element &&
+  !target.closest("dialog:not([open])") &&
   Boolean(
     target.closest(
       "input, textarea, select, button, a, summary, [role='button'], [contenteditable='true']",
@@ -196,6 +213,7 @@ export function AssistantProvider({
   const [history, setHistory] = useState<AssistantTurn[]>(restoreHistory);
   const [exchange, setExchange] = useState<Exchange | null>(null);
   const [writing, setWriting] = useState(false);
+  const [guide, setGuide] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(() => readStorage("local", SPEAK_KEY) === "on");
   const [services, setServices] = useState<AssistantService[]>([]);
   const page = useRef<MutableRefObject<PageRegistration> | null>(null);
@@ -528,6 +546,25 @@ export function AssistantProvider({
       } else if (event.key.toLowerCase() === "v" && speaker.supported && !event.shiftKey) {
         event.preventDefault();
         toggleSpeak();
+      } else if (event.key === "?") {
+        event.preventDefault();
+        setGuide(true);
+      } else if (PAGE_KEYS[event.key]) {
+        event.preventDefault();
+        navigate(PAGE_KEYS[event.key]!);
+      } else if (event.key.toLowerCase() === "d" && !event.shiftKey) {
+        event.preventDefault();
+        toggleTheme();
+      } else if (event.key.toLowerCase() === "n" && !event.shiftKey) {
+        event.preventDefault();
+        navigate("/projects/new");
+      } else if (
+        (event.key.toLowerCase() === "f" || event.key.toLowerCase() === "c") &&
+        !event.shiftKey &&
+        view.projectId
+      ) {
+        event.preventDefault();
+        navigate(`/projects/${view.projectId}${event.key.toLowerCase() === "c" ? "/cv" : ""}`);
       }
     };
     const onKeyUp = (event: KeyboardEvent) => {
@@ -583,6 +620,7 @@ export function AssistantProvider({
     speakerSupported: speaker.supported,
     speakReplies,
     writing,
+    guide,
     send,
     talk,
     stop,
@@ -593,6 +631,7 @@ export function AssistantProvider({
     },
     toggleSpeak,
     setWriting,
+    setGuide,
     register,
   };
 

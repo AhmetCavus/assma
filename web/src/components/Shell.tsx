@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AssistantProvider } from "../lib/assistant";
 import { AssmaDock } from "./AssmaDock";
+import { ShortcutButton, ShortcutGuide } from "./ShortcutGuide";
 import { SiteFooter } from "./SiteFooter";
 import { GrapeMark, Wordmark } from "./GrapeMark";
 import { GitHubLink, LocaleSelect, ThemeButton } from "./Controls";
@@ -27,6 +28,7 @@ const ICONS: Record<string, ReactNode> = {
       <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
     </>
   ),
+  "/progress": <path d="M5 20V12M12 20V5M19 20v-9" strokeLinecap="round" />,
 };
 
 /** Signed-in workspace. Dashboard is the first navigation item; later pages follow it. */
@@ -42,11 +44,11 @@ export function Shell({
   children: ReactNode;
 }) {
   const { copy } = preferences;
-  // Progress follows Experience in a later iteration.
   const items = [
     { path: "/dashboard", label: copy.nav.dashboard },
     { path: "/projects", label: copy.nav.projects },
     { path: "/experience", label: copy.nav.experience },
+    { path: "/progress", label: copy.nav.progress },
   ];
   const { projects } = useProjects(session.api, () => session.signOut(copy.common.sessionExpired));
   const recent = (projects ?? [])
@@ -117,6 +119,7 @@ export function Shell({
             <div className="sidebar-controls">
               <LocaleSelect preferences={preferences} />
               <ThemeButton preferences={preferences} />
+              <ShortcutButton preferences={preferences} />
               <GitHubLink preferences={preferences} compact />
             </div>
             <button type="button" className="link" onClick={() => session.signOut()}>
@@ -127,6 +130,7 @@ export function Shell({
         </aside>
         <main className="workspace-main">{children}</main>
         <AssmaDock preferences={preferences} />
+        <ShortcutGuide preferences={preferences} />
       </div>
     </AssistantProvider>
   );

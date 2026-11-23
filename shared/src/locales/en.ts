@@ -127,11 +127,11 @@ export const en = {
       ],
     },
     next: {
-      title: "Coming next",
+      title: "Also in assma",
       items: [
         "Applications by email or portal, with the exact version you sent",
-        "Follow-ups and your progress over time",
-        "An assistant you can ask about your projects",
+        "Follow-ups and your progress by week or month",
+        "An assistant on every page, by voice or keyboard",
       ],
     },
     seed: {
@@ -347,6 +347,7 @@ export const en = {
     dashboard: "Dashboard",
     projects: "Projects",
     experience: "Experience",
+    progress: "Progress",
   },
   dashboard: {
     title: "Dashboard",
@@ -614,6 +615,37 @@ export const en = {
       source: "Open link",
     },
   },
+  progress: {
+    title: "Progress",
+    lead: "When did you apply, and through which channel?",
+    week: "Week",
+    month: "Month",
+    kinds: "Period",
+    previous: "Previous period",
+    next: "Next period",
+    current: "Today",
+    applications: "Applications",
+    companies: "Companies",
+    companiesNote: "with an application",
+    interviews: "Currently interviewing",
+    interviewsNote: "projects from this period",
+    change: (delta: number, kind: "week" | "month") =>
+      delta === 0
+        ? `same as the previous ${kind}`
+        : `${delta > 0 ? "+" : "−"}${Math.abs(delta)} on the previous ${kind}`,
+    perDay: "Applications per day",
+    perMonth: "Applications this month",
+    bar: (label: string, count: number) =>
+      `${label}: ${count === 1 ? "1 application" : `${count} applications`}`,
+    channels: "Application channels",
+    channel: { email: "Email", portal: "Portal" },
+    list: "Applications in this period",
+    empty: "You recorded no application in this period.",
+    ask: "How did my acquisition go?",
+    askAction: "Ask assma",
+    countNote:
+      "Each recorded application counts on its day, also for archived projects. Notes and follow-ups do not count.",
+  },
   capture: {
     title: "Capture project",
     editTitle: "Edit project",
@@ -850,7 +882,33 @@ export const en = {
       close: "close",
       left: (count: number) => (count === 1 ? "1 character left" : `${count} characters left`),
     },
-    keys: { space: "Space", talk: "talk", write: "write", speak: "read aloud" },
+    keys: {
+      space: "Space",
+      talk: "talk",
+      write: "write",
+      speak: "read aloud",
+      all: "all shortcuts",
+    },
+    guide: {
+      title: "Keyboard shortcuts",
+      close: "Close",
+      assistant: "assma",
+      navigate: "Navigate",
+      acquisition: "Acquisition",
+      space: "Hold to talk, tap to listen until a pause",
+      talk: "Start or stop listening",
+      write: "Write to assma",
+      speak: "Read replies aloud on / off",
+      escape: "Stop speech or reply, close the input",
+      page: (name: string) => `Open ${name}`,
+      guide: "Show keyboard shortcuts",
+      theme: "Switch light / dark",
+      newProject: "Capture a new project",
+      fit: "Fit of the open project",
+      cv: "CV for the open project",
+      field: "Enter sends, Shift+Enter starts a new line, ↑ recalls earlier input.",
+      footnote: "While you type, Space and letters stay in the text field.",
+    },
     greetings: {
       dashboard: "Ask me about your projects and applications, or tell me where to go.",
       projects: "I find a project for you or open a new one.",
@@ -862,6 +920,7 @@ export const en = {
       application: "I note what happened and tell you when to follow up.",
       experience: "Ask me about your references and your profile.",
       import: "I explain the CV import.",
+      progress: "I'll sum up the selected period for you.",
     },
     suggestions: {
       dashboard: ["What is next?", "Which project fits best?"],
@@ -874,6 +933,7 @@ export const en = {
       application: ["When should I follow up?", "Note: call arranged"],
       experience: ["Which reference is strongest?"],
       import: ["How does the import work?"],
+      progress: ["How did my acquisition go?", "What changed from the period before?"],
     },
     targets: {
       dashboard: "the dashboard",
@@ -884,6 +944,7 @@ export const en = {
       project: "the fit",
       project_cv: "the CV",
       project_apply: "the application",
+      progress: "your progress",
     },
     opened: (target: string) => `Opening ${target}.`,
     done: {

@@ -142,7 +142,7 @@ export function DashboardPage({
   );
 
   return (
-    <div className="page">
+    <div className="page wide">
       <p className="eyebrow">{heading}</p>
       <h1>{text.title}</h1>
       <p className="lead">

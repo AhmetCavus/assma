@@ -1,5 +1,10 @@
 import {
   formatPeriod,
+  periodOf,
+  progressOf,
+  shiftPeriod,
+  type ApplicationSummary,
+  type Day,
   sortReferences,
   type Application,
   type AssistantRequest,
@@ -8,6 +13,7 @@ import {
   type Project,
 } from "@assma/shared";
 import * as applications from "../applications/application.repository.js";
+import { listApplications } from "../applications/application.service.js";
 import * as experience from "../experience/experience.repository.js";
 import type { Account } from "../platform/access.js";
 import * as projects from "../projects/project.repository.js";
@@ -38,7 +44,41 @@ const PAGE_LINES: Record<AssistantRequest["view"]["page"], string> = {
   application: "One recorded application: its status, follow-up and activity log.",
   experience: "The person's profile and project references.",
   import: "Importing references from an existing CV.",
+  progress:
+    "Progress: applications submitted in the selected week or month, by day, company and channel.",
 };
+
+/** The calendar day of a moment on the person's own clock, `offset` minutes ahead of UTC. */
+function localDay(at: string, offset: number): Day {
+  return new Date(Date.parse(at) + offset * 60_000).toISOString().slice(0, 10);
+}
+
+/** What Progress shows for the selected period, and the one before it for comparison. */
+function progressLines(
+  list: ApplicationSummary[],
+  selection: { kind: "week" | "month"; start: string; offset: number },
+): string {
+  const period = periodOf(selection.kind, selection.start);
+  const day = (item: ApplicationSummary) => localDay(item.submittedAt, selection.offset);
+  const progress = progressOf(list, period, day);
+  const before = shiftPeriod(period, -1);
+  return [
+    `Period: ${selection.kind} from ${period.start} to ${period.end}; the one before: ${before.start} to ${before.end}.`,
+    `Applications: ${progress.submissions.length} (period before: ${progress.previous}).`,
+    `Companies applied to: ${progress.companies}. Projects from this period now in interview: ${progress.interviews}.`,
+    `Channels: email ${progress.channels.email}, portal ${progress.channels.portal}.`,
+    progress.submissions.length > 0 &&
+      `Submissions:\n${progress.submissions
+        .slice(0, 20)
+        .map(
+          (item) =>
+            `- ${day(item)} ${item.title}${item.company ? ` (${item.company})` : ""} · ${item.channel} · ${item.status ?? "project deleted"}`,
+        )
+        .join("\n")}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 function profileLines(profile: ExperienceProfile | null): string {
   if (!profile) {
@@ -185,6 +225,12 @@ export async function buildContext(
       text: `Subject: ${context.email.subject}\n\n${context.email.message}`,
     });
     known.push(context.email.subject, context.email.message);
+  }
+  if (context.progress && view.page === "progress") {
+    sections.push({
+      tag: "progress",
+      text: progressLines(await listApplications(account), context.progress),
+    });
   }
   if (context.summary !== null && view.page === "cv") {
     sections.push({ tag: "cv_summary", text: context.summary || "(empty)" });

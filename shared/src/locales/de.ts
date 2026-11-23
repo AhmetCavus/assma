@@ -128,11 +128,11 @@ export const de: Copy = {
       ],
     },
     next: {
-      title: "Als Nächstes",
+      title: "Außerdem in assma",
       items: [
         "Bewerbungen per E-Mail oder Portal, mit der genau versendeten Fassung",
-        "Wiedervorlagen und dein Fortschritt über die Zeit",
-        "Eine Assistentin, die du zu deinen Projekten fragen kannst",
+        "Wiedervorlagen und dein Fortschritt nach Woche oder Monat",
+        "Ein Assistent für jede Seite, per Stimme oder Tastatur",
       ],
     },
     seed: {
@@ -348,6 +348,7 @@ export const de: Copy = {
     dashboard: "Dashboard",
     projects: "Projekte",
     experience: "Erfahrung",
+    progress: "Fortschritt",
   },
   dashboard: {
     title: "Dashboard",
@@ -624,6 +625,37 @@ export const de: Copy = {
       source: "Link öffnen",
     },
   },
+  progress: {
+    title: "Fortschritt",
+    lead: "Wann hast du dich beworben, und über welchen Kanal?",
+    week: "Woche",
+    month: "Monat",
+    kinds: "Zeitraum",
+    previous: "Vorheriger Zeitraum",
+    next: "Nächster Zeitraum",
+    current: "Heute",
+    applications: "Bewerbungen",
+    companies: "Unternehmen",
+    companiesNote: "mit einer Bewerbung",
+    interviews: "Aktuell im Interview",
+    interviewsNote: "Projekte aus diesem Zeitraum",
+    change: (delta: number, kind: "week" | "month") =>
+      delta === 0
+        ? `wie ${kind === "week" ? "in der Vorwoche" : "im Vormonat"}`
+        : `${delta > 0 ? "+" : "−"}${Math.abs(delta)} zu${kind === "week" ? "r Vorwoche" : "m Vormonat"}`,
+    perDay: "Bewerbungen pro Tag",
+    perMonth: "Bewerbungen im Monat",
+    bar: (label: string, count: number) =>
+      `${label}: ${count === 1 ? "1 Bewerbung" : `${count} Bewerbungen`}`,
+    channels: "Bewerbungskanäle",
+    channel: { email: "E-Mail", portal: "Portal" },
+    list: "Bewerbungen im Zeitraum",
+    empty: "In diesem Zeitraum hast du keine Bewerbung festgehalten.",
+    ask: "Wie lief meine Akquise?",
+    askAction: "assma fragen",
+    countNote:
+      "Jede festgehaltene Bewerbung zählt an ihrem Tag, auch bei archivierten Projekten. Notizen und Wiedervorlagen zählen nicht.",
+  },
   capture: {
     title: "Projekt erfassen",
     editTitle: "Projekt bearbeiten",
@@ -864,7 +896,33 @@ export const de: Copy = {
       close: "schließen",
       left: (count: number) => (count === 1 ? "1 Zeichen frei" : `${count} Zeichen frei`),
     },
-    keys: { space: "Leertaste", talk: "sprechen", write: "schreiben", speak: "vorlesen" },
+    keys: {
+      space: "Leertaste",
+      talk: "sprechen",
+      write: "schreiben",
+      speak: "vorlesen",
+      all: "alle Kürzel",
+    },
+    guide: {
+      title: "Tastenkürzel",
+      close: "Schließen",
+      assistant: "assma",
+      navigate: "Navigieren",
+      acquisition: "Akquise",
+      space: "Gedrückt halten zum Sprechen, kurz tippen bis zur Pause",
+      talk: "Zuhören starten oder beenden",
+      write: "assma schreiben",
+      speak: "Antworten vorlesen ein / aus",
+      escape: "Sprache oder Antwort stoppen, Eingabe schließen",
+      page: (name: string) => `${name} öffnen`,
+      guide: "Tastenkürzel anzeigen",
+      theme: "Hell / Dunkel wechseln",
+      newProject: "Neues Projekt erfassen",
+      fit: "Passung des geöffneten Projekts",
+      cv: "CV zum geöffneten Projekt",
+      field: "Enter sendet, Umschalt+Enter beginnt eine neue Zeile, ↑ holt frühere Eingaben.",
+      footnote: "Beim Schreiben bleiben Leertaste und Buchstaben im Textfeld.",
+    },
     greetings: {
       dashboard: "Frag mich nach deinen Projekten und Bewerbungen, oder sag, wohin du möchtest.",
       projects: "Ich finde ein Projekt für dich oder öffne ein neues.",
@@ -877,6 +935,7 @@ export const de: Copy = {
       application: "Ich halte fest, was passiert ist, und sage dir, wann du nachfassen solltest.",
       experience: "Frag mich zu deinen Referenzen und deinem Profil.",
       import: "Ich erkläre dir den CV-Import.",
+      progress: "Ich fasse dir den gewählten Zeitraum zusammen.",
     },
     suggestions: {
       dashboard: ["Was steht an?", "Welches Projekt passt am besten?"],
@@ -889,6 +948,7 @@ export const de: Copy = {
       application: ["Wann soll ich nachfassen?", "Notiz: Rückruf vereinbart"],
       experience: ["Welche Referenz ist am stärksten?"],
       import: ["Wie funktioniert der Import?"],
+      progress: ["Wie lief meine Akquise?", "Was war anders als im Zeitraum davor?"],
     },
     targets: {
       dashboard: "das Dashboard",
@@ -899,6 +959,7 @@ export const de: Copy = {
       project: "die Passung",
       project_cv: "den CV",
       project_apply: "die Bewerbung",
+      progress: "deinen Fortschritt",
     },
     opened: (target: string) => `Ich öffne ${target}.`,
     done: {

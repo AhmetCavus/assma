@@ -3,6 +3,7 @@ import { identifier } from "./account.js";
 import { APPLICATION_LIMITS } from "./applications.js";
 import { CV_LANGUAGES } from "./cvDesign.js";
 import { FIT_LIMITS } from "./fit.js";
+import { PERIOD_KINDS } from "./progress.js";
 
 /**
  * The assma assistant: one helper above every signed-in page, spoken to or typed to. It knows
@@ -31,6 +32,7 @@ export const ASSISTANT_PAGES = [
   "application",
   "experience",
   "import",
+  "progress",
 ] as const;
 export type AssistantPage = (typeof ASSISTANT_PAGES)[number];
 
@@ -60,6 +62,7 @@ export const NAVIGATION_TARGETS = [
   "project",
   "project_cv",
   "project_apply",
+  "progress",
 ] as const;
 export type NavigationTarget = (typeof NAVIGATION_TARGETS)[number];
 
@@ -75,6 +78,19 @@ export const assistantContextSchema = z.object({
   summary: z.string().max(FIT_LIMITS.summary).nullable().default(null),
   /** The CV's language; email and summary are written in it. */
   cvLanguage: z.enum(CV_LANGUAGES).nullable().default(null),
+  /** The period selected on Progress, with the browser's offset from UTC in minutes. */
+  progress: z
+    .object({
+      kind: z.enum(PERIOD_KINDS),
+      start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      offset: z
+        .number()
+        .int()
+        .min(-14 * 60)
+        .max(14 * 60),
+    })
+    .nullable()
+    .default(null),
 });
 export type AssistantContext = z.input<typeof assistantContextSchema>;
 
@@ -265,6 +281,10 @@ const INTENT_RULES: [RegExp, LocalIntent][] = [
     { kind: "navigate", target: "experience" },
   ],
   [/^(cv importieren|cv import|import (my )?cv)$/, { kind: "navigate", target: "import" }],
+  [
+    /^(öffne |zeig |zum |geh zum |go to |open |show )?(den |meinen |my )?(fortschritt|progress|statistik|statistics)$/,
+    { kind: "navigate", target: "progress" },
+  ],
   [
     /^(dunkel|hell|dunkler modus|heller modus|dark mode|light mode|switch theme|theme wechseln)$/,
     { kind: "theme" },
