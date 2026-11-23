@@ -75,6 +75,14 @@ function referenceLines(references: ExperienceReference[], detailed: boolean): s
 function projectLines(project: Project): string {
   const fit = project.fit;
   const findings = fit?.findings ?? [];
+  if (project.draft) {
+    return [
+      project.brief
+        ? `Draft saved from pasted listing text${project.sourceUrl ? ` (${project.sourceUrl})` : ""}.`
+        : `Draft saved with only its link: ${project.sourceUrl}`,
+      "The listing has not been read yet; it is processed on the edit page.",
+    ].join("\n");
+  }
   return [
     `Title: ${project.title}`,
     project.company && `Client: ${project.company}`,
@@ -105,7 +113,7 @@ function projectListLines(list: Project[]): string {
     .slice(0, 15)
     .map(
       (project) =>
-        `- ${project.title}${project.company ? ` (${project.company})` : ""} · ${project.status} · fit ${project.fit?.score ?? "-"}`,
+        `- ${project.title}${project.company ? ` (${project.company})` : ""} · ${project.draft ? "draft, not read yet" : `${project.status} · fit ${project.fit?.score ?? "-"}`}`,
     )
     .join("\n");
 }

@@ -49,7 +49,9 @@ export function Shell({
     { path: "/experience", label: copy.nav.experience },
   ];
   const { projects } = useProjects(session.api, () => session.signOut(copy.common.sessionExpired));
-  const recent = (projects ?? []).filter((project) => !project.archived).slice(0, 6);
+  const recent = (projects ?? [])
+    .filter((project) => !project.archived && !project.draft)
+    .slice(0, 6);
   return (
     <AssistantProvider session={session} preferences={preferences} path={path}>
       <div className="workspace">

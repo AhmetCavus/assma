@@ -1,12 +1,16 @@
 import {
+  draftTitle,
   listingFetchRequestSchema,
   listingSuggestRequestSchema,
   PROJECT_LIMITS,
   projectChangeSchema,
+  projectDraftRequestSchema,
   projectInputSchema,
+  textDraftTitle,
   type ListingFetchResult,
   type ListingJob,
   type ListingSuggestions,
+  type ProjectDraftResult,
 } from "@assma/shared";
 import * as applications from "../applications/application.repository.js";
 import type { Account } from "../platform/access.js";
@@ -41,8 +45,45 @@ export async function createProject(account: Account, input: unknown) {
   return repository.createProject(account.id, fields);
 }
 
+/**
+ * Quick add: saves links or a pasted listing as drafts without reading them, so a listing
+ * found on the go is not lost. Links are loaded when the draft is processed; text is read
+ * directly. A link that is already a project is reported instead of added twice.
+ */
+export async function addDrafts(account: Account, input: unknown): Promise<ProjectDraftResult> {
+  const request = projectDraftRequestSchema.parse(input);
+  const drafts =
+    "urls" in request
+      ? request.urls.map((url) => ({ title: draftTitle(url), sourceUrl: url, brief: "" }))
+      : [
+          {
+            title: textDraftTitle(request.text) || draftTitle(request.url),
+            sourceUrl: request.url,
+            brief: request.text,
+          },
+        ];
+  const existing = await repository.existingSources(
+    account.id,
+    drafts.map((draft) => draft.sourceUrl).filter(Boolean),
+  );
+  const fresh = drafts.filter((draft) => !existing.includes(draft.sourceUrl));
+  const count = await repository.countProjects(account.id);
+  if (count + fresh.length > PROJECT_LIMITS.projects) {
+    throw new AssmaError(409, "project_limit");
+  }
+  const created = [];
+  for (const draft of fresh) {
+    created.push(await repository.createProject(account.id, projectInputSchema.parse(draft), true));
+  }
+  return { created, existing };
+}
+
+/** Saving the full form also completes a draft. */
 export async function updateProject(account: Account, id: string, input: unknown) {
-  const updated = await repository.updateProject(account.id, id, projectInputSchema.parse(input));
+  const updated = await repository.updateProject(account.id, id, {
+    ...projectInputSchema.parse(input),
+    draft: false,
+  });
   if (!updated) {
     throw notFound();
   }

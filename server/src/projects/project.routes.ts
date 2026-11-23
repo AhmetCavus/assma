@@ -20,6 +20,11 @@ projectRoutes.post(
   endpoint((request, response) => service.createProject(accountOf(response), request.body)),
 );
 
+projectRoutes.post(
+  "/drafts",
+  endpoint((request, response) => service.addDrafts(accountOf(response), request.body)),
+);
+
 // Capturing from a link or text. Declared before "/:id" so the paths do not collide.
 projectRoutes.post(
   "/listing/fetch",

@@ -4,7 +4,7 @@ import ProjectModel, { type ProjectRecord } from "../models/project.model.js";
 type StoredProject = ProjectRecord & { _id: unknown };
 type ProjectFields = Omit<
   ProjectRecord,
-  "ownerId" | "status" | "archived" | "fit" | "cv" | "createdAt" | "updatedAt"
+  "ownerId" | "status" | "archived" | "draft" | "fit" | "cv" | "createdAt" | "updatedAt"
 >;
 
 function toProject(record: StoredProject): Project {
@@ -24,6 +24,7 @@ function toProject(record: StoredProject): Project {
     terms: record.terms ?? "",
     status: record.status,
     archived: Boolean(record.archived),
+    draft: Boolean(record.draft),
     // Stored data that no longer matches the contract is treated as absent, not as an error.
     fit: fitSchema.safeParse(record.fit).success ? record.fit : null,
     cv: cvDraftSchema.safeParse(record.cv).success ? record.cv : null,
@@ -52,13 +53,26 @@ export async function countProjects(ownerId: string): Promise<number> {
   return ProjectModel.model.countDocuments({ ownerId });
 }
 
-export async function createProject(ownerId: string, fields: ProjectFields): Promise<Project> {
+/** Which of these source links the owner already saved as a project. */
+export async function existingSources(ownerId: string, urls: string[]): Promise<string[]> {
+  const records = await ProjectModel.model
+    .find({ ownerId, sourceUrl: { $in: urls } }, { sourceUrl: 1 })
+    .lean<{ sourceUrl: string }[]>();
+  return records.map((record) => record.sourceUrl);
+}
+
+export async function createProject(
+  ownerId: string,
+  fields: ProjectFields,
+  draft = false,
+): Promise<Project> {
   const now = new Date();
   const created = await ProjectModel.model.create({
     ...fields,
     ownerId,
     status: "captured",
     archived: false,
+    draft,
     createdAt: now,
     updatedAt: now,
   });

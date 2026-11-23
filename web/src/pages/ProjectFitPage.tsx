@@ -18,7 +18,7 @@ import { takeAutoAssess } from "../lib/flash";
 import type { Preferences } from "../lib/preferences";
 import { useAssistantPage } from "../lib/assistant";
 import { projectsChanged } from "../lib/projects";
-import { linkHandler } from "../lib/router";
+import { linkHandler, navigate } from "../lib/router";
 import type { Session } from "../lib/session";
 import { PencilIcon } from "./ExperiencePage";
 
@@ -70,6 +70,11 @@ export function ProjectFitPage({
     Promise.all([api.project(id), api.experience()])
       .then(([loadedProject, loadedExperience]) => {
         if (!active) {
+          return;
+        }
+        // A draft has no requirements yet; it is read on the edit page first.
+        if (loadedProject.draft) {
+          navigate(`/projects/${id}/edit`, { replace: true });
           return;
         }
         setProject(loadedProject);

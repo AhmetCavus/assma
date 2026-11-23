@@ -22,6 +22,8 @@ export const PROJECT_LIMITS = {
   requirements: 30,
   terms: 300,
   projects: 500,
+  /** Links saved at once with "quick add". */
+  quickLinks: 20,
 } as const;
 
 /** In acquisition order. "applied" will later be set when an application is recorded. */
@@ -98,6 +100,8 @@ export const projectSchema = z.object({
   terms: z.string(),
   status: projectStatusSchema,
   archived: z.boolean(),
+  /** Saved with only its link via "quick add"; read and filled in later. */
+  draft: z.boolean(),
   /** The latest experience assessment, or null before the first one. */
   fit: fitSchema.nullable(),
   /** The tailored CV draft, or null until the person saves one. */
@@ -132,6 +136,109 @@ export function matchesSearch(
 }
 
 // ---------------------------------------------------------------------------------------
+// Quick add: links or listing text saved as drafts, read later.
+
+/** The web links in pasted text, in order, without repeats or trailing punctuation. */
+export function linksIn(text: string): string[] {
+  const found = text.match(/https?:\/\/[^\s<>"'`]+/gi) ?? [];
+  const links = found.map((link) => link.replace(/[).,;:!?\]}>»“”’]+$/u, ""));
+  return [...new Set(links)];
+}
+
+/** A readable stand-in title until the listing is read: the site and the last path part. */
+export function draftTitle(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./i, "");
+    const last = parsed.pathname.split("/").filter(Boolean).pop() ?? "";
+    let slug = last;
+    try {
+      slug = decodeURIComponent(last);
+    } catch {
+      // Keep the raw segment.
+    }
+    slug = slug
+      .replace(/\.(html?|php|aspx?)$/i, "")
+      .replace(/[-_+]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    // Bare ids say nothing; the site alone is clearer.
+    const words = /[a-z]{3,}/i.test(slug) ? slug : "";
+    return (words ? `${host} · ${words}` : host).slice(0, PROJECT_LIMITS.title);
+  } catch {
+    return url.slice(0, PROJECT_LIMITS.title);
+  }
+}
+
+/** A stand-in title for pasted text: its first line, shortened. */
+export function textDraftTitle(text: string): string {
+  const line =
+    text
+      .split("\n")
+      .map((part) =>
+        part
+          .replace(/https?:\/\/\S+/gi, "")
+          .replace(/\s+/g, " ")
+          .trim(),
+      )
+      .find((part) => /\p{L}{2,}/u.test(part)) ?? "";
+  const max = 80;
+  return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
+}
+
+/**
+ * What quick add makes of the input. Mostly links: each one becomes a draft that is loaded
+ * later. Anything with real text around it is a listing: one draft whose text is read
+ * directly, keeping its first link as the source.
+ */
+export type QuickInput =
+  | { kind: "links"; urls: string[] }
+  | { kind: "text"; text: string; url: string }
+  | { kind: "empty" };
+
+export function quickInputOf(input: string): QuickInput {
+  const text = input.replace(/\r\n?/g, "\n").trim();
+  const urls = linksIn(text);
+  const rest = text
+    .replace(/https?:\/\/[^\s<>"'`]+/gi, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+  if (rest.length >= PROJECT_LIMITS.minBrief) {
+    return { kind: "text", text, url: urls[0] ?? "" };
+  }
+  return urls.length > 0 ? { kind: "links", urls } : { kind: "empty" };
+}
+
+const briefText = z
+  .string()
+  .transform((value) => value.replace(/\r\n?/g, "\n").trim())
+  .pipe(z.string().min(PROJECT_LIMITS.minBrief, "too_short").max(PROJECT_LIMITS.brief, "too_long"));
+
+export const projectDraftRequestSchema = z.union([
+  z.object({
+    urls: z
+      .array(sourceUrl.refine(Boolean, "invalid_url"))
+      .min(1, "required")
+      .max(PROJECT_LIMITS.quickLinks, "too_many_links")
+      .transform((urls) => [...new Set(urls)]),
+  }),
+  z.object({
+    /** A pasted listing, read later without loading anything. */
+    text: briefText,
+    /** Where it came from, when the text names it. */
+    url: sourceUrl.default(""),
+  }),
+]);
+export type ProjectDraftRequest = z.input<typeof projectDraftRequestSchema>;
+
+export const projectDraftResultSchema = z.object({
+  created: z.array(projectSchema),
+  /** Links already saved as a project, so nothing is added twice. */
+  existing: z.array(z.string()),
+});
+export type ProjectDraftResult = z.infer<typeof projectDraftResultSchema>;
+
+// ---------------------------------------------------------------------------------------
 // Capturing from a link or text.
 
 export const listingFetchRequestSchema = z.object({
@@ -146,14 +253,7 @@ export const listingFetchResultSchema = z.object({
 });
 export type ListingFetchResult = z.infer<typeof listingFetchResultSchema>;
 
-export const listingSuggestRequestSchema = z.object({
-  text: z
-    .string()
-    .transform((value) => value.replace(/\r\n?/g, "\n").trim())
-    .pipe(
-      z.string().min(PROJECT_LIMITS.minBrief, "too_short").max(PROJECT_LIMITS.brief, "too_long"),
-    ),
-});
+export const listingSuggestRequestSchema = z.object({ text: briefText });
 export type ListingSuggestRequest = z.input<typeof listingSuggestRequestSchema>;
 
 /** Field suggestions from a listing, already within the project limits. */

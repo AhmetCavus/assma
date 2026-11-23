@@ -808,6 +808,119 @@ h2 {
   color: var(--ink);
 }
 
+.quick-card {
+  margin-bottom: 16px;
+}
+
+.quick-add {
+  display: grid;
+  gap: 8px;
+}
+
+.quick-add > label {
+  font-weight: 600;
+}
+
+.quick-add-row {
+  display: flex;
+  gap: 10px;
+}
+
+.quick-add-row textarea {
+  resize: none;
+  overflow-y: auto;
+  font: inherit;
+  line-height: 1.4;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--input);
+  color: var(--ink);
+}
+
+.quick-add-row textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.quick-add-row .button {
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
+@media (pointer: coarse) {
+  .quick-add-keys {
+    display: none;
+  }
+}
+
+.draft-card {
+  margin-bottom: 16px;
+}
+
+.draft-card h2 {
+  margin-bottom: 4px;
+}
+
+.draft-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.draft-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.draft-body {
+  display: grid;
+  /* Lets a long link shrink to its ellipsis instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.draft-source {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draft-date {
+  white-space: nowrap;
+}
+
+.draft-kind {
+  margin-right: 6px;
+  font-weight: 600;
+}
+
+.status-draft::before {
+  background: transparent;
+  border: 1px dashed currentColor;
+}
+
+@media (max-width: 640px) {
+  .quick-add-row {
+    flex-direction: column;
+  }
+
+  .draft-list li {
+    flex-wrap: wrap;
+  }
+
+  .draft-body,
+  .draft-date {
+    flex-basis: 100%;
+  }
+}
+
 .table-card {
   overflow: visible;
 }
@@ -1125,9 +1238,12 @@ h2 {
   min-width: 0;
 }
 
-.project-table td[data-label="Datum und Uhrzeit"],
-.project-table td[data-label="Date and time"] {
-  white-space: nowrap;
+/* In the table the date stays on one line; on phones, where rows stack, it may wrap. */
+@media (min-width: 861px) {
+  .project-table td[data-label="Datum und Uhrzeit"],
+  .project-table td[data-label="Date and time"] {
+    white-space: nowrap;
+  }
 }
 
 /* Fit and tailored CV */

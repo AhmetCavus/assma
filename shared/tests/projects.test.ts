@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  draftTitle,
+  linksIn,
   listingSuggestRequestSchema,
   matchesSearch,
   normaliseListing,
   parseLines,
   projectChangeSchema,
+  projectDraftRequestSchema,
+  quickInputOf,
+  textDraftTitle,
   projectInputSchema,
   sortProjects,
 } from "../src/index.ts";
@@ -86,4 +91,94 @@ test("projects sort newest first and listing text is bounded", () => {
   );
   assert.equal(listingSuggestRequestSchema.safeParse({ text: "too short" }).success, false);
   assert.equal(listingSuggestRequestSchema.safeParse({ text: "x".repeat(30_001) }).success, false);
+});
+
+test("quick add finds every link in pasted text, once and without trailing punctuation", () => {
+  assert.deepEqual(
+    linksIn(
+      "Schau mal: https://www.freelancermap.de/projekt/java-entwickler-123.html, und\n" +
+        "(https://example.com/jobs/42) sowie https://www.freelancermap.de/projekt/java-entwickler-123.html",
+    ),
+    [
+      "https://www.freelancermap.de/projekt/java-entwickler-123.html",
+      "https://example.com/jobs/42",
+    ],
+  );
+  assert.deepEqual(linksIn("no link here, ftp://x.org is not one"), []);
+});
+
+test("a draft gets a readable stand-in title from its link", () => {
+  assert.equal(
+    draftTitle("https://www.freelancermap.de/projekt/senior-java-entwickler-m-w-d.html"),
+    "freelancermap.de · senior java entwickler m w d",
+  );
+  assert.equal(draftTitle("https://jobs.example.com/view/8834512"), "jobs.example.com");
+  assert.equal(draftTitle("https://example.com/"), "example.com");
+  assert.equal(
+    draftTitle("https://example.com/K%C3%B6ln-Data_Engineer"),
+    "example.com · Köln Data Engineer",
+  );
+});
+
+test("quick add takes 1 to 20 http(s) links and drops repeats", () => {
+  assert.deepEqual(
+    projectDraftRequestSchema.parse({ urls: ["https://a.example/1", "https://a.example/1"] }),
+    { urls: ["https://a.example/1"] },
+  );
+  assert.equal(projectDraftRequestSchema.safeParse({ urls: [] }).success, false);
+  assert.equal(
+    projectDraftRequestSchema.safeParse({ urls: ["javascript:alert(1)"] }).success,
+    false,
+  );
+  assert.equal(projectDraftRequestSchema.safeParse({ urls: [""] }).success, false);
+  assert.equal(
+    projectDraftRequestSchema.safeParse({
+      urls: Array.from({ length: 21 }, (_, index) => `https://a.example/${index}`),
+    }).success,
+    false,
+  );
+});
+
+test("quick add tells links from listing text", () => {
+  assert.deepEqual(quickInputOf("https://a.example/1\nhttps://a.example/2"), {
+    kind: "links",
+    urls: ["https://a.example/1", "https://a.example/2"],
+  });
+  // A short note around links is still links.
+  assert.deepEqual(quickInputOf("Schau mal hier: https://a.example/1 und das!"), {
+    kind: "links",
+    urls: ["https://a.example/1"],
+  });
+  const listing =
+    "Senior Android Entwickler (m/w/d)\nRemote, 6 Monate. Kotlin, Jetpack Compose und Erfahrung mit Barrierefreiheit.\nhttps://jobs.example/android";
+  assert.deepEqual(quickInputOf(`  ${listing}\r\n`), {
+    kind: "text",
+    text: listing,
+    url: "https://jobs.example/android",
+  });
+  assert.equal(quickInputOf("Android, Kotlin").kind, "empty");
+  assert.equal(quickInputOf("   ").kind, "empty");
+});
+
+test("a text draft is titled by its first line with words", () => {
+  assert.equal(
+    textDraftTitle("https://jobs.example/x\n\n  Senior Android Entwickler (m/w/d)  \nRemote"),
+    "Senior Android Entwickler (m/w/d)",
+  );
+  assert.equal(textDraftTitle("x".repeat(30) + " " + "y".repeat(80)).length, 80);
+  assert.equal(textDraftTitle("--- 123 ---"), "");
+});
+
+test("quick add takes a pasted listing with an optional source link", () => {
+  const listing = "Wir suchen eine Android-Entwicklerin mit Kotlin für ein Gesundheitsprojekt.";
+  assert.deepEqual(projectDraftRequestSchema.parse({ text: `${listing}\r\n` }), {
+    text: listing,
+    url: "",
+  });
+  assert.equal(projectDraftRequestSchema.safeParse({ text: "zu kurz" }).success, false);
+  assert.equal(
+    projectDraftRequestSchema.safeParse({ text: listing, url: "javascript:alert(1)" }).success,
+    false,
+  );
+  assert.equal(projectDraftRequestSchema.safeParse({ text: "x".repeat(30_001) }).success, false);
 });

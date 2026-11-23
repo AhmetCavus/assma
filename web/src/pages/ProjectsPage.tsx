@@ -7,6 +7,7 @@ import {
   type ProjectChange,
   type ProjectStatus,
 } from "@assma/shared";
+import { QuickAdd } from "../components/QuickAdd";
 import type { Preferences } from "../lib/preferences";
 import { projectsChanged, useProjects } from "../lib/projects";
 import { linkHandler, navigate } from "../lib/router";
@@ -34,7 +35,9 @@ export function ProjectsPage({
   const [status, setStatus] = useState(takeFlash);
   const [error, setError] = useState("");
 
-  const active = (projects ?? []).filter((project) => !project.archived);
+  // Drafts wait in their own list until they are processed.
+  const drafts = (projects ?? []).filter((project) => project.draft && !project.archived);
+  const active = (projects ?? []).filter((project) => !project.archived && !project.draft);
   const archive = (projects ?? []).filter((project) => project.archived);
   const shown = (archived ? archive : active).filter(
     (project) => (filter === "all" || project.status === filter) && matchesSearch(project, query),
@@ -99,6 +102,9 @@ export function ProjectsPage({
           {text.newProject}
         </a>
       </div>
+      <section className="card quick-card">
+        <QuickAdd session={session} preferences={preferences} />
+      </section>
       <p className="status" aria-live="polite">
         {status}
       </p>
@@ -106,6 +112,51 @@ export function ProjectsPage({
         <p className="alert error" role="alert">
           {error || copy.common.error}
         </p>
+      )}
+      {drafts.length > 0 && (
+        <section className="card draft-card" aria-labelledby="drafts-title">
+          <h2 id="drafts-title">{text.drafts.title(drafts.length)}</h2>
+          <p className="muted small">{text.drafts.lead}</p>
+          <ul className="draft-list">
+            {drafts.map((project) => (
+              <li key={project.id}>
+                <span className="draft-body">
+                  <strong>{project.title}</strong>
+                  <span className="muted small draft-source">
+                    <span className="draft-kind">
+                      {project.brief ? text.drafts.fromText : text.drafts.fromLink}
+                    </span>
+                    {project.sourceUrl ? (
+                      <a
+                        href={project.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={text.drafts.source}
+                      >
+                        {project.sourceUrl}
+                      </a>
+                    ) : (
+                      project.brief.replace(/\s+/g, " ").slice(0, 160)
+                    )}
+                  </span>
+                </span>
+                <span className="muted small draft-date">
+                  {date.format(new Date(project.createdAt))}
+                </span>
+                <a
+                  className="pill"
+                  href={`/projects/${project.id}/edit`}
+                  onClick={linkHandler(`/projects/${project.id}/edit`)}
+                >
+                  {text.drafts.process}
+                </a>
+                <button type="button" className="link danger" onClick={() => void remove(project)}>
+                  {text.delete}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       <div className="chips" role="tablist" aria-label={text.title}>
         <button
@@ -185,7 +236,11 @@ export function ProjectsPage({
                     </a>
                   </td>
                   <td data-label={text.columnStatus}>
-                    <StatusBadge status={project.status} label={text.status[project.status]} />
+                    {project.draft ? (
+                      <span className="status-badge status-draft">{text.drafts.badge}</span>
+                    ) : (
+                      <StatusBadge status={project.status} label={text.status[project.status]} />
+                    )}
                   </td>
                   <td data-label={text.columnTech}>{project.tech.slice(0, 3).join(" · ")}</td>
                   <td data-label={text.columnDate}>{date.format(new Date(project.createdAt))}</td>

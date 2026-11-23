@@ -91,7 +91,10 @@ function toFitJob(view: JobView<Fit>): FitJob {
 }
 
 export async function startAssessment(account: Account, projectId: string) {
-  await owned(account, projectId);
+  // A draft has no requirements yet; it is read first.
+  if ((await owned(account, projectId)).draft) {
+    throw new AssmaError(409, "project_draft");
+  }
   assessmentsPerAccount.attempt(account.id);
   return toFitJob(
     modelJobs.start(account.id, kindOf(projectId), (signal) =>

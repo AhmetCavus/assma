@@ -25,10 +25,12 @@ import {
 import {
   listingFetchResultSchema,
   listingJobSchema,
+  projectDraftResultSchema,
   projectSchema,
   type ListingFetchRequest,
   type ListingSuggestRequest,
   type ProjectChange,
+  type ProjectDraftRequest,
   type ProjectInput,
 } from "../projects.js";
 import { fitJobSchema, type CvDraftInput, type FindingChange } from "../fit.js";
@@ -134,6 +136,11 @@ export class AssmaApi {
 
   createProject(input: ProjectInput) {
     return this.call("post", "/projects", projectSchema, input);
+  }
+
+  /** Saves links as drafts that are read later. */
+  addDrafts(input: ProjectDraftRequest) {
+    return this.call("post", "/projects/drafts", projectDraftResultSchema, input);
   }
 
   updateProject(id: string, input: ProjectInput) {

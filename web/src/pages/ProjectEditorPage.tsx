@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   parseLines,
   parseSkills,
@@ -49,7 +49,8 @@ const EMPTY: Draft = {
 
 function draftOf(project: Project): Draft {
   return {
-    title: project.title,
+    // A draft's title is only a stand-in, so the suggestion may replace it.
+    title: project.draft ? "" : project.title,
     company: project.company,
     agency: project.agency,
     contact: project.contact,
@@ -147,6 +148,8 @@ export function ProjectEditorPage({
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const editing = id !== null;
+  const processing = project?.draft ?? false;
+  const autoRead = useRef(false);
 
   function fail(failure: unknown, fallback = copy.common.error) {
     const apiError = toApiError(failure);
@@ -232,6 +235,14 @@ export function ProjectEditorPage({
     };
   }, [job?.id]);
 
+  // A draft is read as soon as it is opened: pasted text directly, a bare link after loading.
+  useEffect(() => {
+    if (processing && !autoRead.current && (draft.brief.trim() || draft.sourceUrl)) {
+      autoRead.current = true;
+      void suggest();
+    }
+  }, [processing, draft.brief, draft.sourceUrl]);
+
   const set = (field: keyof Draft) => (event: { target: { value: string } }) =>
     setDraft((current) => ({ ...current, [field]: event.target.value }));
 
@@ -314,7 +325,13 @@ export function ProjectEditorPage({
     setError("");
     setBusy(true);
     try {
-      if (project) {
+      if (project?.draft) {
+        // A processed draft continues like a new project: on to the fit check.
+        const saved = await api.updateProject(project.id, parsed.data);
+        projectsChanged();
+        setAutoAssess(saved.id);
+        navigate(`/projects/${saved.id}`);
+      } else if (project) {
         const saved = await api.updateProject(project.id, parsed.data);
         setProject(saved);
         setDraft(draftOf(saved));
@@ -399,8 +416,8 @@ export function ProjectEditorPage({
       >
         ← {editing ? copy.cv.back : text.toOverview}
       </a>
-      <h1>{editing ? text.editTitle : text.title}</h1>
-      <p className="lead">{text.lead}</p>
+      <h1>{processing ? text.draftTitle : editing ? text.editTitle : text.title}</h1>
+      <p className="lead">{processing ? text.draftLead : text.lead}</p>
       {!editing && (
         <div className="chips" role="tablist" aria-label={text.title}>
           {(["suggest", "manual"] as const).map((option) => (
@@ -582,7 +599,11 @@ export function ProjectEditorPage({
         </div>
         <div className="form-actions page-actions">
           <button className="button" disabled={busy || reading}>
-            {busy ? copy.common.working : editing ? text.saveChanges : text.saveAndAssess}
+            {busy
+              ? copy.common.working
+              : editing && !processing
+                ? text.saveChanges
+                : text.saveAndAssess}
           </button>
           <a className="pill" href="/projects" onClick={linkHandler("/projects")}>
             {text.toOverview}

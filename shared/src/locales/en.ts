@@ -377,6 +377,8 @@ export const en = {
     projectsCount: (active: number, archived: number) =>
       `${active} active ${active === 1 ? "project" : "projects"}${archived > 0 ? `, ${archived} archived` : ""}.`,
     projectsOpen: "Open projects",
+    draftsCount: (count: number) =>
+      count === 1 ? "1 draft waits to be processed." : `${count} drafts wait to be processed.`,
     signedInAs: (email: string, role: string) => `Signed in as ${email} (${role})`,
   },
 
@@ -582,10 +584,41 @@ export const en = {
     sidebarTitle: "Your projects",
     capture: "Capture project",
     projectLimit: "You have reached the limit of 500 projects.",
+    quick: {
+      label: "Quick add",
+      placeholder: "Paste project links or the text of a listing",
+      add: "Save for later",
+      adding: "Saving…",
+      hint: "assma loads links only when you process the draft. Pasted text is then read directly.",
+      keys: "Enter saves · Shift+Enter new line",
+      addedText: "Saved the text as a draft.",
+      asLinks: (count: number) =>
+        count === 1 ? "Found 1 link, loaded later." : `Found ${count} links, loaded later.`,
+      asText: "Found listing text, read directly later.",
+      tooLong: (max: number) =>
+        `The text is too long, at most ${max.toLocaleString("en-US")} characters.`,
+      added: (count: number) =>
+        count === 1 ? "Saved 1 link as a draft." : `Saved ${count} links as drafts.`,
+      existing: (count: number) =>
+        count === 1 ? "1 link is already saved." : `${count} links are already saved.`,
+      noLink: "No link found and too little text for a listing. A link starts with https://.",
+      tooMany: (max: number) => `At most ${max} links at once.`,
+    },
+    drafts: {
+      title: (count: number) => `Drafts · ${count}`,
+      lead: "These listings are saved but not read yet. Process a draft so assma fills in the fields.",
+      fromLink: "Link",
+      fromText: "Text",
+      badge: "Draft",
+      process: "Process",
+      source: "Open link",
+    },
   },
   capture: {
     title: "Capture project",
     editTitle: "Edit project",
+    draftTitle: "Process draft",
+    draftLead: "assma loads the saved link and suggests the fields. Check them and save.",
     lead: "assma suggests fields from the listing. You check them next to the source.",
     modeSuggest: "Project link or text",
     modeManual: "Enter manually",

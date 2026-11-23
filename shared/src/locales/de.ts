@@ -380,6 +380,10 @@ export const de: Copy = {
     projectsCount: (active: number, archived: number) =>
       `${active} ${active === 1 ? "aktives Projekt" : "aktive Projekte"}${archived > 0 ? `, ${archived} archiviert` : ""}.`,
     projectsOpen: "Projekte öffnen",
+    draftsCount: (count: number) =>
+      count === 1
+        ? "1 Entwurf wartet auf Verarbeitung."
+        : `${count} Entwürfe warten auf Verarbeitung.`,
     signedInAs: (email: string, role: string) => `Angemeldet als ${email} (${role})`,
   },
 
@@ -587,10 +591,44 @@ export const de: Copy = {
     sidebarTitle: "Deine Projekte",
     capture: "Projekt erfassen",
     projectLimit: "Du hast die Grenze von 500 Projekten erreicht.",
+    quick: {
+      label: "Schnell hinzufügen",
+      placeholder: "Projektlinks oder den Text einer Ausschreibung einfügen",
+      add: "Merken",
+      adding: "Wird gemerkt…",
+      hint: "Links lädt assma erst, wenn du den Entwurf verarbeitest. Eingefügten Text liest assma dann direkt.",
+      keys: "Enter merken · Umschalt+Enter neue Zeile",
+      addedText: "Text als Entwurf gemerkt.",
+      asLinks: (count: number) =>
+        count === 1
+          ? "Erkannt: 1 Link, wird später geladen."
+          : `Erkannt: ${count} Links, werden später geladen.`,
+      asText: "Erkannt: Ausschreibungstext, wird später direkt gelesen.",
+      tooLong: (max: number) =>
+        `Der Text ist zu lang, höchstens ${max.toLocaleString("de-DE")} Zeichen.`,
+      added: (count: number) =>
+        count === 1 ? "1 Link als Entwurf gemerkt." : `${count} Links als Entwürfe gemerkt.`,
+      existing: (count: number) =>
+        count === 1 ? "1 Link ist schon gespeichert." : `${count} Links sind schon gespeichert.`,
+      noLink:
+        "Kein Link gefunden und zu wenig Text für eine Ausschreibung. Ein Link beginnt mit https://.",
+      tooMany: (max: number) => `Höchstens ${max} Links auf einmal.`,
+    },
+    drafts: {
+      title: (count: number) => `Entwürfe · ${count}`,
+      lead: "Diese Ausschreibungen sind gemerkt, aber noch nicht gelesen. Verarbeite einen Entwurf, damit assma die Felder ausfüllt.",
+      fromLink: "Link",
+      fromText: "Text",
+      badge: "Entwurf",
+      process: "Verarbeiten",
+      source: "Link öffnen",
+    },
   },
   capture: {
     title: "Projekt erfassen",
     editTitle: "Projekt bearbeiten",
+    draftTitle: "Entwurf verarbeiten",
+    draftLead: "assma lädt den gemerkten Link und schlägt die Felder vor. Prüfe sie und speichere.",
     lead: "assma schlägt Felder aus der Ausschreibung vor. Du prüfst sie neben der Quelle.",
     modeSuggest: "Projektlink oder Text",
     modeManual: "Manuell erfassen",

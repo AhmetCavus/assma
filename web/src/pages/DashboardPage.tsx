@@ -14,6 +14,7 @@ import { GrapeMark } from "../components/GrapeMark";
 import { useApplications } from "../lib/applications";
 import type { Preferences } from "../lib/preferences";
 import { useProjects } from "../lib/projects";
+import { QuickAdd } from "../components/QuickAdd";
 import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
 
@@ -35,8 +36,13 @@ export function DashboardPage({
   const expired = () => signOut(copy.common.sessionExpired);
   const { projects } = useProjects(api, expired);
   const { applications, failed } = useApplications(api, expired);
-  const activeProjects = (projects ?? []).filter((project) => !project.archived).length;
-  const archivedProjects = (projects ?? []).length - activeProjects;
+  const activeProjects = (projects ?? []).filter(
+    (project) => !project.archived && !project.draft,
+  ).length;
+  const draftProjects = (projects ?? []).filter(
+    (project) => !project.archived && project.draft,
+  ).length;
+  const archivedProjects = (projects ?? []).filter((project) => project.archived).length;
 
   // The server confirms the session; an expired or revoked token returns to the login.
   useEffect(() => {
@@ -231,6 +237,7 @@ export function DashboardPage({
               {projects.length === 0
                 ? text.projectsEmpty
                 : text.projectsCount(activeProjects, archivedProjects)}
+              {draftProjects > 0 && ` ${text.draftsCount(draftProjects)}`}
             </p>
           </div>
           <a
@@ -240,6 +247,11 @@ export function DashboardPage({
           >
             {projects.length === 0 ? copy.projects.capture : text.projectsOpen}
           </a>
+        </section>
+      )}
+      {projects !== null && (
+        <section className="card quick-card">
+          <QuickAdd session={session} preferences={preferences} />
         </section>
       )}
       {references !== null && (
