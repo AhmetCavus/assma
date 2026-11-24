@@ -315,7 +315,7 @@ export function ProjectFitPage({
             {text.edit}
           </a>
           <a
-            className="pill"
+            className="pill secondary"
             href={`/projects/${id}/cv`}
             onClick={linkHandler(`/projects/${id}/cv`)}
           >

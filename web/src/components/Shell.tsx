@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Icon, type IconName } from "./Icon";
 import { AssistantProvider } from "../lib/assistant";
 import { AssmaDock } from "./AssmaDock";
 import { ShortcutButton, ShortcutGuide } from "./ShortcutGuide";
@@ -10,25 +11,11 @@ import { useProjects } from "../lib/projects";
 import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
 
-const ICONS: Record<string, ReactNode> = {
-  "/dashboard": (
-    <>
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <rect x="14" y="14" width="7" height="7" rx="1.5" />
-    </>
-  ),
-  "/projects": (
-    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-  ),
-  "/experience": (
-    <>
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
-    </>
-  ),
-  "/progress": <path d="M5 20V12M12 20V5M19 20v-9" strokeLinecap="round" />,
+const ICONS: Record<string, IconName> = {
+  "/dashboard": "grid",
+  "/projects": "folder",
+  "/experience": "user",
+  "/progress": "chart",
 };
 
 /** Signed-in workspace. Dashboard is the first navigation item; later pages follow it. */
@@ -76,17 +63,7 @@ export function Shell({
                     }
                     aria-current={path === item.path ? "page" : undefined}
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="18"
-                      height="18"
-                      aria-hidden="true"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      {ICONS[item.path]}
-                    </svg>
+                    <Icon name={ICONS[item.path] ?? "grid"} />
                     {item.label}
                   </a>
                 </li>
@@ -110,8 +87,8 @@ export function Shell({
                 </li>
               ))}
             </ul>
-            <a className="pill" href="/projects/new" onClick={linkHandler("/projects/new")}>
-              <span aria-hidden="true">+</span>
+            <a className="pill primary" href="/projects/new" onClick={linkHandler("/projects/new")}>
+              <Icon name="plus" size={16} />
               {copy.projects.capture}
             </a>
           </section>

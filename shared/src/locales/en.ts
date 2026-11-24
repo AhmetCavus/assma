@@ -613,6 +613,7 @@ export const en = {
     projectLimit: "You have reached the limit of 500 projects.",
     quick: {
       label: "Quick add",
+      lead: "Spotted a project? Drop the link or the listing here and get back to it later.",
       placeholder: "Paste project links or the text of a listing",
       add: "Save for later",
       adding: "Saving…",

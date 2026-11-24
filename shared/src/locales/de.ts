@@ -620,6 +620,7 @@ export const de: Copy = {
     projectLimit: "Du hast die Grenze von 500 Projekten erreicht.",
     quick: {
       label: "Schnell hinzufügen",
+      lead: "Ein Projekt entdeckt? Link oder Ausschreibung hier ablegen und später weitermachen.",
       placeholder: "Projektlinks oder den Text einer Ausschreibung einfügen",
       add: "Merken",
       adding: "Wird gemerkt…",

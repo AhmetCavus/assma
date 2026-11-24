@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { PROJECT_LIMITS, quickInputOf, toApiError } from "@assma/shared";
+import { Icon } from "./Icon";
 import type { Preferences } from "../lib/preferences";
 import { projectsChanged } from "../lib/projects";
 import type { Session } from "../lib/session";
@@ -109,7 +110,15 @@ export function QuickAdd({ session, preferences }: { session: Session; preferenc
         void add();
       }}
     >
-      <label htmlFor="quick-add-input">{text.label}</label>
+      <div className="quick-add-head">
+        <span className="quick-add-badge" aria-hidden="true">
+          <Icon name="bolt" size={22} />
+        </span>
+        <div>
+          <label htmlFor="quick-add-input">{text.label}</label>
+          <p className="quick-add-lead">{text.lead}</p>
+        </div>
+      </div>
       <div className="quick-add-row">
         <textarea
           id="quick-add-input"
@@ -130,7 +139,8 @@ export function QuickAdd({ session, preferences }: { session: Session; preferenc
           aria-describedby="quick-add-hint"
           aria-invalid={error ? true : undefined}
         />
-        <button className="button" disabled={busy || !value.trim()}>
+        <button className="button primary" disabled={busy || !value.trim()}>
+          <Icon name="plus" size={18} />
           {busy ? text.adding : text.add}
         </button>
       </div>
@@ -139,7 +149,18 @@ export function QuickAdd({ session, preferences }: { session: Session; preferenc
           {error}
         </small>
       ) : (
-        <small id="quick-add-hint" className="muted" aria-live="polite">
+        <small
+          id="quick-add-hint"
+          className={`quick-add-hint ${status ? "is-saved" : detected ? "is-detected" : ""}`}
+          aria-live="polite"
+        >
+          {status ? (
+            <Icon name="check" size={15} />
+          ) : input.kind === "links" ? (
+            <Icon name="link" size={15} />
+          ) : input.kind === "text" ? (
+            <Icon name="text" size={15} />
+          ) : null}
           {status || detected || text.hint}
           {!status && value.trim() && <span className="quick-add-keys"> · {text.keys}</span>}
         </small>

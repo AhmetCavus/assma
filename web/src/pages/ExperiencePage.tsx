@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Icon } from "../components/Icon";
 import {
   formatPeriod,
   LANGUAGE_LEVELS,
@@ -284,7 +285,7 @@ export function ExperiencePage({
                         {reference.skills.length > 0 && (
                           <button
                             type="button"
-                            className="pill"
+                            className="pill tertiary"
                             aria-expanded={usageOpen === reference.id}
                             onClick={() =>
                               setUsageOpen((current) =>
@@ -346,10 +347,10 @@ export function ExperiencePage({
             {editing?.kind !== "reference" && (
               <button
                 type="button"
-                className="pill"
+                className="pill tertiary"
                 onClick={() => startEditing({ kind: "reference", id: null })}
               >
-                <span aria-hidden="true">+</span>
+                <Icon name="plus" size={16} />
                 {text.addReference}
               </button>
             )}
@@ -698,13 +699,13 @@ function ProfileForm({
         )}
         <button
           type="button"
-          className="pill"
+          className="pill tertiary"
           onClick={() =>
             setCertificates((current) => [...current, { name: "", issuer: "", year: "" }])
           }
           disabled={certificates.length >= 30}
         >
-          <span aria-hidden="true">+</span>
+          <Icon name="plus" size={16} />
           {text.addCertificate}
         </button>
       </fieldset>
@@ -750,11 +751,11 @@ function ProfileForm({
         )}
         <button
           type="button"
-          className="pill"
+          className="pill tertiary"
           onClick={() => setLanguages((current) => [...current, { name: "", level: "B2" }])}
           disabled={languages.length >= 12}
         >
-          <span aria-hidden="true">+</span>
+          <Icon name="plus" size={16} />
           {text.addLanguage}
         </button>
       </fieldset>
@@ -820,7 +821,7 @@ function ProfileForm({
         )}
         <button
           type="button"
-          className="pill"
+          className="pill tertiary"
           onClick={() =>
             setEducation((current) => [
               ...current,
@@ -829,7 +830,7 @@ function ProfileForm({
           }
           disabled={education.length >= 12}
         >
-          <span aria-hidden="true">+</span>
+          <Icon name="plus" size={16} />
           {text.addEducation}
         </button>
       </fieldset>
@@ -880,11 +881,11 @@ function PhotosCard({
       )}
       <button
         type="button"
-        className="pill"
+        className="pill tertiary"
         disabled={busy || full}
         onClick={() => input.current?.click()}
       >
-        <span aria-hidden="true">+</span>
+        <Icon name="plus" size={16} />
         {busy ? text.uploading : text.uploadPhoto}
       </button>
       {full && <p className="muted small">{text.photoLimit}</p>}
@@ -1074,7 +1075,13 @@ function FormActions({
         {text.cancel}
       </button>
       {onDelete && (
-        <button type="button" className="link danger" onClick={onDelete} disabled={busy}>
+        <button
+          type="button"
+          className="button destructive soft compact push-right"
+          onClick={onDelete}
+          disabled={busy}
+        >
+          <Icon name="trash" size={16} />
           {text.delete}
         </button>
       )}

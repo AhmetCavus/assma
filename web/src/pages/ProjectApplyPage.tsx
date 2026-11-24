@@ -417,7 +417,7 @@ export function ProjectApplyPage({
                   </button>
                   <button
                     type="button"
-                    className="pill"
+                    className="pill secondary"
                     disabled={busy}
                     onClick={() => void openMailto()}
                   >
@@ -434,7 +434,7 @@ export function ProjectApplyPage({
                   {when(text.sentAt)}
                   <button
                     type="button"
-                    className="button"
+                    className="button positive"
                     disabled={busy}
                     onClick={() => void record()}
                   >
@@ -479,7 +479,7 @@ export function ProjectApplyPage({
                 <p className="muted small">{text.confirmLead}</p>
                 <button
                   type="button"
-                  className="button"
+                  className="button positive"
                   disabled={busy}
                   onClick={() => void record()}
                 >
@@ -514,7 +514,7 @@ export function ProjectApplyPage({
           </ol>
           <div className="apply-actions">
             <a
-              className="pill"
+              className="pill secondary"
               href={`/projects/${id}/cv`}
               onClick={linkHandler(`/projects/${id}/cv`)}
             >
@@ -522,7 +522,7 @@ export function ProjectApplyPage({
             </a>
             <button
               type="button"
-              className="pill"
+              className="pill secondary"
               disabled={busy}
               onClick={() => void withPdf((bytes) => download(fileName, pdfBlob(bytes)))}
             >

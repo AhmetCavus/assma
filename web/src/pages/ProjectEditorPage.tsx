@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Icon } from "../components/Icon";
 import {
   COMPENSATION_UNITS,
   CONTRACT_TYPES,
@@ -697,7 +698,7 @@ export function ProjectEditorPage({
                 <div className="form-actions">
                   <button
                     type="button"
-                    className="pill"
+                    className="pill secondary"
                     onClick={() => void loadLink()}
                     disabled={loadingLink || !draft.sourceUrl.trim()}
                   >
@@ -818,10 +819,15 @@ export function ProjectEditorPage({
           </a>
           {project && (
             <>
-              <button type="button" className="pill" onClick={() => void toggleArchive()}>
+              <button type="button" className="pill tertiary" onClick={() => void toggleArchive()}>
                 {project.archived ? copy.projects.restore : copy.projects.toArchive}
               </button>
-              <button type="button" className="link danger" onClick={() => void remove()}>
+              <button
+                type="button"
+                className="button destructive soft compact push-right"
+                onClick={() => void remove()}
+              >
+                <Icon name="trash" size={16} />
                 {copy.projects.delete}
               </button>
             </>

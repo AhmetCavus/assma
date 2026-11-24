@@ -20,6 +20,22 @@
   --tint: #efe5fa;
   --tint-edge: #bda1d6;
   --danger: #993e42;
+  /* Action palette: each role has a solid colour, the text on it and a soft tint. */
+  --primary: #6e40b2;
+  --primary-ink: #fff;
+  --primary-tint: #efe5fa;
+  --secondary: #2c5f8a;
+  --secondary-ink: #fff;
+  --secondary-tint: #e2edf6;
+  --tertiary: #9a4f1c;
+  --tertiary-ink: #fff;
+  --tertiary-tint: #f8eadf;
+  --positive: #2b7046;
+  --positive-ink: #fff;
+  --positive-tint: #e1f1e6;
+  --destructive: #b0383e;
+  --destructive-ink: #fff;
+  --destructive-tint: #f9e2e2;
   --grape-back: #7652d0;
   --grape-front: #8963e5;
   --shade: 0 8px 25px #573a2610;
@@ -42,6 +58,21 @@
   --tint: #32283f;
   --tint-edge: #70558e;
   --danger: #ff9c9c;
+  --primary: #ad8dff;
+  --primary-ink: #180f2a;
+  --primary-tint: #32283f;
+  --secondary: #8ec3ee;
+  --secondary-ink: #0b1b29;
+  --secondary-tint: #1c2b38;
+  --tertiary: #f2aa70;
+  --tertiary-ink: #2a1606;
+  --tertiary-tint: #3a2a1d;
+  --positive: #82d49c;
+  --positive-ink: #0b2214;
+  --positive-tint: #1b3224;
+  --destructive: #ff9c9c;
+  --destructive-ink: #2a0a0b;
+  --destructive-tint: #3d2123;
   --shade: 0 8px 18px #09060440;
   --input: #1a1714;
 }
@@ -547,10 +578,6 @@ h2 {
   gap: 10px;
 }
 
-.form-actions .danger {
-  margin-left: auto;
-  color: var(--danger);
-}
 
 @media (max-width: 760px) {
   .experience-grid,
@@ -1058,7 +1085,15 @@ h2 {
 }
 
 .menu button.danger {
-  color: var(--danger);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--destructive);
+}
+
+.menu button.danger:hover,
+.menu button.danger:focus-visible {
+  background: var(--destructive-tint);
 }
 
 .menu-label {
@@ -2562,9 +2597,6 @@ h2 {
   border-color: var(--danger);
 }
 
-.saved-cvs .pill.danger {
-  color: var(--danger);
-}
 
 .saved-cvs .field-error {
   margin: 6px 0 0;
@@ -4052,7 +4084,6 @@ h2 {
 
 .danger-link {
   justify-self: start;
-  color: var(--danger);
 }
 
 /* Dashboard */
@@ -5363,4 +5394,433 @@ kbd {
 .preference-checks .checkbox,
 .preference-contract .checkbox {
   overflow-wrap: anywhere;
+}
+
+/* Action palette.
+   primary: the one main action of a view · secondary: the next step or an output (draft,
+   export, regenerate) · tertiary: optional additions (add, archive, save as new) ·
+   positive: confirms a success (record as sent, confirm, apply a suggestion) ·
+   destructive: removes something. Cancel, close and back stay neutral pills.
+   On `.button`, primary, positive and destructive are filled; secondary is tinted and
+   tertiary is outlined. `.soft` tints any role. A `.pill` with a role is the light version:
+   tinted, or outlined for tertiary. */
+.icon {
+  flex: none;
+}
+
+.button {
+  gap: 8px;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+
+:is(.button, .pill).primary {
+  --role: var(--primary);
+  --role-ink: var(--primary-ink);
+  --role-tint: var(--primary-tint);
+}
+
+:is(.button, .pill).secondary {
+  --role: var(--secondary);
+  --role-ink: var(--secondary-ink);
+  --role-tint: var(--secondary-tint);
+}
+
+:is(.button, .pill).tertiary {
+  --role: var(--tertiary);
+  --role-ink: var(--tertiary-ink);
+  --role-tint: var(--tertiary-tint);
+}
+
+:is(.button, .pill).positive {
+  --role: var(--positive);
+  --role-ink: var(--positive-ink);
+  --role-tint: var(--positive-tint);
+}
+
+:is(.button, .pill).destructive {
+  --role: var(--destructive);
+  --role-ink: var(--destructive-ink);
+  --role-tint: var(--destructive-tint);
+}
+
+.button.primary,
+.button.positive,
+.button.destructive {
+  background: var(--role);
+  color: var(--role-ink);
+}
+
+.button.primary:hover:not(:disabled),
+.button.positive:hover:not(:disabled),
+.button.destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--role) 88%, var(--ink));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--role) 30%, transparent);
+}
+
+.button.secondary,
+.button.soft {
+  background: var(--role-tint);
+  color: var(--role);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--role) 25%, transparent);
+}
+
+.button.tertiary {
+  background: transparent;
+  color: var(--role);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--role) 45%, transparent);
+}
+
+.button.secondary:hover:not(:disabled),
+.button.tertiary:hover:not(:disabled),
+.button.soft:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--role-tint) 70%, var(--role) 14%);
+}
+
+.button.compact {
+  padding: 7px 14px;
+  font-size: 0.9rem;
+}
+
+.pill.primary,
+.pill.secondary,
+.pill.positive,
+.pill.destructive {
+  background: var(--role-tint);
+  border-color: color-mix(in srgb, var(--role) 28%, transparent);
+  color: var(--role);
+}
+
+.pill.tertiary {
+  border-color: color-mix(in srgb, var(--role) 45%, transparent);
+  color: var(--role);
+}
+
+.pill.primary:hover:not(:disabled),
+.pill.secondary:hover:not(:disabled),
+.pill.positive:hover:not(:disabled),
+.pill.destructive:hover:not(:disabled),
+.pill.tertiary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--role-tint) 70%, var(--role) 14%);
+  border-color: color-mix(in srgb, var(--role) 55%, transparent);
+}
+
+.pill:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.tone-primary {
+  --role: var(--primary);
+  --role-tint: var(--primary-tint);
+}
+
+.tone-secondary {
+  --role: var(--secondary);
+  --role-tint: var(--secondary-tint);
+}
+
+.tone-tertiary {
+  --role: var(--tertiary);
+  --role-tint: var(--tertiary-tint);
+}
+
+.tone-positive {
+  --role: var(--positive);
+  --role-tint: var(--positive-tint);
+}
+
+.tone-destructive {
+  --role: var(--destructive);
+  --role-tint: var(--destructive-tint);
+}
+
+/* Quick add: a tinted card with a badge, so saving a listing is the obvious first move. */
+.quick-add-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.quick-add-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, var(--grape-front), var(--primary));
+  color: #fff;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.quick-add-head label {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.quick-add-lead {
+  margin: 2px 0 0;
+  color: var(--sub);
+  font-size: 0.92rem;
+}
+
+.quick-add-row textarea {
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.quick-add-row textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.quick-add-hint {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.quick-add-hint.is-detected {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.quick-add-hint.is-saved {
+  color: var(--positive);
+  font-weight: 600;
+}
+
+.quick-add-hint .quick-add-keys {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.quick-hero {
+  position: relative;
+  margin: 24px 0 20px;
+  padding: 22px 24px 20px;
+  border: 1px solid var(--tint-edge);
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 60%),
+    linear-gradient(135deg, var(--primary-tint), var(--panel) 70%);
+  box-shadow:
+    var(--shade),
+    0 14px 34px color-mix(in srgb, var(--primary) 12%, transparent);
+  overflow: hidden;
+}
+
+.quick-hero .quick-add-row textarea {
+  min-height: 52px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 1.02rem;
+}
+
+.quick-hero .quick-add-row .button {
+  min-height: 52px;
+  padding-inline: 22px;
+}
+
+/* Dashboard */
+.dashboard .page-header .button {
+  margin-bottom: 18px;
+}
+
+.stat {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "icon label"
+    "icon value";
+  column-gap: 14px;
+  align-items: center;
+  box-shadow: var(--shade);
+}
+
+.stat-icon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--role-tint);
+  color: var(--role);
+}
+
+.stat dt {
+  grid-area: label;
+}
+
+.stat dd {
+  grid-area: value;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.dash-main,
+.dash-side {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.dash-grid + p {
+  margin-top: 24px;
+}
+
+.due-card.has-due {
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--line));
+}
+
+.count-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--role-tint);
+  color: var(--role);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.due-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+.due-empty .icon {
+  color: var(--positive);
+}
+
+.due-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.follow-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--raised);
+  line-height: 1.3;
+}
+
+.dashboard .follow-row {
+  grid-template-columns: 210px minmax(0, 1fr) auto;
+}
+
+@media (max-width: 900px) {
+  .dashboard .follow-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.follow-when.is-overdue {
+  background: var(--destructive-tint);
+  color: var(--destructive);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-title .icon {
+  color: var(--primary);
+}
+
+.link-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px 16px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--role);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: var(--shade);
+}
+
+.link-card-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--role-tint);
+  color: var(--role);
+}
+
+.link-card h2 {
+  font-size: 1.15rem;
+  margin-bottom: 4px;
+}
+
+.link-card p {
+  margin: 0;
+}
+
+.link-card .button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 10px 18px;
+}
+
+@media (max-width: 1000px) {
+  .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .quick-hero {
+    padding: 18px 16px;
+  }
+
+  .quick-hero .quick-add-row .button {
+    width: 100%;
+  }
+
+  .stat {
+    padding: 14px;
+    column-gap: 10px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+  }
 }

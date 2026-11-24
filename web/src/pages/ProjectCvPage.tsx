@@ -690,7 +690,7 @@ export function ProjectCvPage({
                   aria-label={text.roleAddLabel}
                 />
               </label>
-              <button type="submit" className="pill" disabled={!newRole.trim() || roleLimitReached}>
+              <button type="submit" className="pill tertiary" disabled={!newRole.trim() || roleLimitReached}>
                 {text.roleAdd}
               </button>
             </form>
@@ -769,7 +769,7 @@ export function ProjectCvPage({
             </button>
             <button
               type="button"
-              className="pill"
+              className="pill secondary"
               onClick={() =>
                 download(
                   `${fileName}.md`,
@@ -782,14 +782,14 @@ export function ProjectCvPage({
             </button>
             <button
               type="button"
-              className="pill"
+              className="pill secondary"
               onClick={() => void exportPdf()}
               disabled={exporting}
             >
               <DownloadIcon />
               {exporting ? copy.common.working : text.pdf}
             </button>
-            <button type="button" className="pill" onClick={() => void apply()} disabled={busy}>
+            <button type="button" className="pill secondary" onClick={() => void apply()} disabled={busy}>
               {text.applyWithCv}
             </button>
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon } from "./Icon";
 import {
   SAVED_CV_LIMITS,
   toApiError,
@@ -210,10 +211,11 @@ export function SavedCvs({
           <span>{text.savedConfirmDelete(selected.name)}</span>
           <button
             type="button"
-            className="pill danger"
+            className="button destructive compact"
             onClick={() => void remove()}
             disabled={busy}
           >
+            <Icon name="trash" size={16} />
             {text.savedDelete}
           </button>
           <button type="button" className="pill" onClick={() => reset("")} disabled={busy}>
@@ -225,7 +227,7 @@ export function SavedCvs({
           {selected && (
             <button
               type="button"
-              className="pill"
+              className="pill secondary"
               onClick={() => void update()}
               disabled={busy || !changed}
             >
@@ -234,7 +236,7 @@ export function SavedCvs({
           )}
           <button
             type="button"
-            className="pill"
+            className="pill tertiary"
             onClick={() => {
               setMode("create");
               setName("");
@@ -260,7 +262,7 @@ export function SavedCvs({
               </button>
               <button
                 type="button"
-                className="pill"
+                className="pill destructive"
                 onClick={() => {
                   setMode("delete");
                   setMessage("");

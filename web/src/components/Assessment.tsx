@@ -174,7 +174,7 @@ export function DimensionCards({
           <p className="small muted">{copy.missingProfile(evidence.missingProfileData.length)}</p>
         )}
         <a
-          className="pill small-pill"
+          className="pill small-pill secondary"
           href={`/projects/${projectId}/cv`}
           onClick={linkHandler(`/projects/${projectId}/cv`)}
         >
@@ -474,7 +474,7 @@ function RequirementRow({
                 <button
                   key={action.kind}
                   type="button"
-                  className="pill small-pill"
+                  className="pill small-pill secondary"
                   disabled={busy}
                   title={
                     action.kind === "confirm_usage"
@@ -779,7 +779,7 @@ export function EvidencePanel({
                         </span>
                         <button
                           type="button"
-                          className="pill small-pill"
+                          className="pill small-pill positive"
                           onClick={() => onApply(suggestion)}
                         >
                           {text.apply}
@@ -790,7 +790,7 @@ export function EvidencePanel({
                         <span>{text.addSkill(suggestion.skill)}</span>
                         <button
                           type="button"
-                          className="pill small-pill"
+                          className="pill small-pill positive"
                           onClick={() => onApply(suggestion)}
                         >
                           {text.apply}
@@ -801,7 +801,7 @@ export function EvidencePanel({
                         <span>
                           {text.mention(suggestion.term, organization(suggestion.referenceId))}
                         </span>
-                        <button type="button" className="pill small-pill" onClick={onWrite}>
+                        <button type="button" className="pill small-pill secondary" onClick={onWrite}>
                           {text.writeIt}
                         </button>
                       </>

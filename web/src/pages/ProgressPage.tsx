@@ -264,7 +264,7 @@ export function ProgressPage({
             </span>
             <button
               type="button"
-              className="pill push-right"
+              className="pill secondary push-right"
               onClick={() => void assistant.send(text.ask)}
             >
               {text.askAction}

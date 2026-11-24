@@ -11,6 +11,7 @@ import {
   type ProjectStatus,
 } from "@assma/shared";
 import { AssessmentCell } from "../components/Assessment";
+import { Icon } from "../components/Icon";
 import { QuickAdd } from "../components/QuickAdd";
 import { candidateFrom, cvInputOf, useEconomicPreferences, useExperience } from "../lib/assessment";
 import type { Preferences } from "../lib/preferences";
@@ -125,8 +126,8 @@ export function ProjectsPage({
           <h1>{text.title}</h1>
           <p className="lead">{text.lead}</p>
         </div>
-        <a className="button" href="/projects/new" onClick={linkHandler("/projects/new")}>
-          <span aria-hidden="true">+</span>
+        <a className="button primary" href="/projects/new" onClick={linkHandler("/projects/new")}>
+          <Icon name="plus" />
           {text.newProject}
         </a>
       </div>
@@ -178,7 +179,12 @@ export function ProjectsPage({
                 >
                   {text.drafts.process}
                 </a>
-                <button type="button" className="link danger" onClick={() => void remove(project)}>
+                <button
+                  type="button"
+                  className="button destructive soft compact"
+                  onClick={() => void remove(project)}
+                >
+                  <Icon name="trash" size={16} />
                   {text.delete}
                 </button>
               </li>
@@ -403,6 +409,7 @@ function RowMenu({
             {project.archived ? text.restore : text.toArchive}
           </button>
           <button type="button" role="menuitem" className="danger" onClick={act(onDelete)}>
+            <Icon name="trash" size={16} />
             {text.delete}
           </button>
         </div>

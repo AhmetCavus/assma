@@ -156,7 +156,7 @@ export function UsagePanel({
         {ownPeriod ? (
           <button
             type="button"
-            className="button"
+            className="button positive"
             disabled={busy}
             onClick={() => void confirm({ start, end: end || null })}
           >
@@ -165,7 +165,7 @@ export function UsagePanel({
         ) : (
           <button
             type="button"
-            className="button"
+            className="button positive"
             disabled={busy}
             onClick={() => void confirm("engagement")}
           >
@@ -182,7 +182,7 @@ export function UsagePanel({
         </button>
         <button
           type="button"
-          className="pill"
+          className="pill tertiary"
           disabled={busy}
           onClick={() => void confirm("unknown")}
         >

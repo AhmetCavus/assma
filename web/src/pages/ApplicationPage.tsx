@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon } from "../components/Icon";
 import {
   dayOf,
   PROJECT_STATUSES,
@@ -339,7 +340,7 @@ export function ApplicationPage({
                   {application.followUpAt && (
                     <button
                       type="button"
-                      className="pill"
+                      className="pill destructive"
                       disabled={busy}
                       onClick={() => void saveFollowUp(null)}
                     >
@@ -482,12 +483,12 @@ export function ApplicationPage({
                   {text.downloadOriginal}
                 </button>
               )}
-              <button type="button" className="pill" onClick={() => void regenerate()}>
+              <button type="button" className="pill secondary" onClick={() => void regenerate()}>
                 {text.regenerate}
               </button>
               <button
                 type="button"
-                className="pill"
+                className="pill secondary"
                 onClick={() =>
                   download(
                     `${fileBase}.md`,
@@ -566,7 +567,12 @@ export function ApplicationPage({
             <pre className="source-text">{snapshot.project.brief || snapshot.project.title}</pre>
           </details>
 
-          <button type="button" className="link danger-link" onClick={() => void remove()}>
+          <button
+            type="button"
+            className="button destructive soft compact danger-link"
+            onClick={() => void remove()}
+          >
+            <Icon name="trash" size={16} />
             {text.delete}
           </button>
         </aside>

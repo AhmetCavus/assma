@@ -11,6 +11,7 @@ import {
   type ApplicationSummary,
 } from "@assma/shared";
 import { GrapeMark } from "../components/GrapeMark";
+import { Icon, type IconName } from "../components/Icon";
 import { useApplications } from "../lib/applications";
 import type { Preferences } from "../lib/preferences";
 import { useProjects } from "../lib/projects";
@@ -126,7 +127,10 @@ export function DashboardPage({
         href={`/applications/${item.id}`}
         onClick={linkHandler(`/applications/${item.id}`)}
       >
-        <span className={`follow-when ${overdue ? "is-overdue" : ""}`}>{when}</span>
+        <span className={`follow-when ${overdue ? "is-overdue" : ""}`}>
+          <Icon name={overdue ? "alert" : "clock"} size={15} />
+          {when}
+        </span>
         <span className="follow-body">
           <strong>{item.title}</strong>
           <span className="muted small">
@@ -141,73 +145,114 @@ export function DashboardPage({
     </li>
   );
 
+  const stats: [string, number, IconName, string][] = [
+    [text.stats.applications, list.length, "send", "primary"],
+    [text.stats.thisMonth, thisMonth.length, "calendar", "secondary"],
+    [text.stats.open, open.length, "inbox", "tertiary"],
+    [text.stats.interviews, interviews.size, "chat", "positive"],
+  ];
+  const projectsPath = projects?.length === 0 ? "/projects/new" : "/projects";
+
   return (
-    <div className="page wide">
-      <p className="eyebrow">{heading}</p>
-      <h1>{text.title}</h1>
-      <p className="lead">
-        {text.greeting(account?.name ?? "")} {text.lead}
-      </p>
+    <div className="page wide dashboard">
+      <div className="page-header">
+        <div>
+          <p className="eyebrow">{heading}</p>
+          <h1>{text.title}</h1>
+          <p className="lead">
+            {text.greeting(account?.name ?? "")} {text.lead}
+          </p>
+        </div>
+        <a
+          className="button primary"
+          href="/projects/new"
+          onClick={linkHandler("/projects/new")}
+        >
+          <Icon name="plus" />
+          {copy.projects.capture}
+        </a>
+      </div>
       {(error || failed) && (
         <p className="alert error" role="alert">
           {copy.common.error}
         </p>
       )}
 
-      {applications !== null && (
-        <>
-          <section className="card due-card" aria-labelledby="due-title">
-            <div className="due-head">
-              <GrapeMark size={44} />
-              <h2 id="due-title">{text.dueTitle}</h2>
-            </div>
-            {due.length === 0 ? (
-              <p className="muted">{list.length === 0 ? text.noApplications : text.dueNone}</p>
-            ) : (
-              <ul className="follow-list">
-                {due.map((item) => {
-                  const days = daysBetween(item.followUpAt!, today);
-                  return followUpRow(
-                    item,
-                    days === 0 ? text.dueToday : text.overdue(days),
-                    days > 0,
-                  );
-                })}
-              </ul>
-            )}
-            {upcoming.length > 0 && (
-              <>
-                <h3>{text.upcomingTitle}</h3>
-                <ul className="follow-list">
-                  {upcoming.map((item) =>
-                    followUpRow(
-                      item,
-                      `${text.inDays(daysBetween(today, item.followUpAt!))} · ${dateOnly.format(new Date(`${item.followUpAt}T12:00`))}`,
-                      false,
-                    ),
-                  )}
-                </ul>
-              </>
-            )}
-          </section>
+      {projects !== null && (
+        <section className="quick-hero" aria-label={copy.projects.quick.label}>
+          <QuickAdd session={session} preferences={preferences} />
+        </section>
+      )}
 
-          <dl className="stat-row">
-            {[
-              [text.stats.applications, list.length],
-              [text.stats.thisMonth, thisMonth.length],
-              [text.stats.open, open.length],
-              [text.stats.interviews, interviews.size],
-            ].map(([label, value]) => (
-              <div key={label} className="stat">
-                <dt>{label}</dt>
-                <dd>{value}</dd>
+      {applications !== null && (
+        <dl className="stat-row">
+          {stats.map(([label, value, icon, tone]) => (
+            <div key={label} className={`stat tone-${tone}`}>
+              <span className="stat-icon" aria-hidden="true">
+                <Icon name={icon} size={20} />
+              </span>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      <div className="dash-grid">
+        <div className="dash-main">
+          {applications !== null && (
+            <section
+              className={`card due-card ${due.length > 0 ? "has-due" : ""}`}
+              aria-labelledby="due-title"
+            >
+              <div className="due-head">
+                <GrapeMark size={40} />
+                <h2 id="due-title">{text.dueTitle}</h2>
+                {due.length > 0 && <span className="count-badge tone-destructive">{due.length}</span>}
               </div>
-            ))}
-          </dl>
+              {due.length === 0 ? (
+                <p className="due-empty muted">
+                  <Icon name="check" size={18} />
+                  {list.length === 0 ? text.noApplications : text.dueNone}
+                </p>
+              ) : (
+                <ul className="follow-list">
+                  {due.map((item) => {
+                    const days = daysBetween(item.followUpAt!, today);
+                    return followUpRow(
+                      item,
+                      days === 0 ? text.dueToday : text.overdue(days),
+                      days > 0,
+                    );
+                  })}
+                </ul>
+              )}
+              {upcoming.length > 0 && (
+                <>
+                  <h3>
+                    <Icon name="calendar" size={16} />
+                    {text.upcomingTitle}
+                  </h3>
+                  <ul className="follow-list">
+                    {upcoming.map((item) =>
+                      followUpRow(
+                        item,
+                        `${text.inDays(daysBetween(today, item.followUpAt!))} · ${dateOnly.format(new Date(`${item.followUpAt}T12:00`))}`,
+                        false,
+                      ),
+                    )}
+                  </ul>
+                </>
+              )}
+            </section>
+          )}
 
           {activity.length > 0 && (
             <section className="card" aria-labelledby="recent-title">
-              <h2 id="recent-title">{text.recentTitle}</h2>
+              <h2 id="recent-title" className="card-title">
+                <Icon name="activity" />
+                {text.recentTitle}
+              </h2>
               <ul className="recent-list">
                 {activity.map((item) => (
                   <li key={item.application.id}>
@@ -226,47 +271,57 @@ export function DashboardPage({
               </ul>
             </section>
           )}
-        </>
-      )}
+        </div>
 
-      {projects !== null && (
-        <section className="empty-card">
-          <div>
-            <h2>{text.projectsTitle}</h2>
-            <p className="muted">
-              {projects.length === 0
-                ? text.projectsEmpty
-                : text.projectsCount(activeProjects, archivedProjects)}
-              {draftProjects > 0 && ` ${text.draftsCount(draftProjects)}`}
-            </p>
-          </div>
-          <a
-            className="pill push-right"
-            href={projects.length === 0 ? "/projects/new" : "/projects"}
-            onClick={linkHandler(projects.length === 0 ? "/projects/new" : "/projects")}
-          >
-            {projects.length === 0 ? copy.projects.capture : text.projectsOpen}
-          </a>
-        </section>
-      )}
-      {projects !== null && (
-        <section className="card quick-card">
-          <QuickAdd session={session} preferences={preferences} />
-        </section>
-      )}
-      {references !== null && (
-        <section className="empty-card">
-          <div>
-            <h2>{text.experienceTitle}</h2>
-            <p className="muted">
-              {references === 0 ? text.experienceEmpty : text.experienceCount(references)}
-            </p>
-          </div>
-          <a className="pill push-right" href="/experience" onClick={linkHandler("/experience")}>
-            {text.experienceOpen}
-          </a>
-        </section>
-      )}
+        <div className="dash-side">
+          {projects !== null && (
+            <section className="link-card tone-secondary">
+              <span className="link-card-icon" aria-hidden="true">
+                <Icon name="briefcase" size={22} />
+              </span>
+              <div>
+                <h2>{text.projectsTitle}</h2>
+                <p className="muted">
+                  {projects.length === 0
+                    ? text.projectsEmpty
+                    : text.projectsCount(activeProjects, archivedProjects)}
+                  {draftProjects > 0 && ` ${text.draftsCount(draftProjects)}`}
+                </p>
+              </div>
+              <a
+                className="button secondary"
+                href={projectsPath}
+                onClick={linkHandler(projectsPath)}
+              >
+                {projects.length === 0 ? copy.projects.capture : text.projectsOpen}
+                <Icon name="arrowRight" size={16} />
+              </a>
+            </section>
+          )}
+          {references !== null && (
+            <section className="link-card tone-tertiary">
+              <span className="link-card-icon" aria-hidden="true">
+                <Icon name="user" size={22} />
+              </span>
+              <div>
+                <h2>{text.experienceTitle}</h2>
+                <p className="muted">
+                  {references === 0 ? text.experienceEmpty : text.experienceCount(references)}
+                </p>
+              </div>
+              <a
+                className="button tertiary"
+                href="/experience"
+                onClick={linkHandler("/experience")}
+              >
+                {text.experienceOpen}
+                <Icon name="arrowRight" size={16} />
+              </a>
+            </section>
+          )}
+        </div>
+      </div>
+
       {account ? (
         <p className="muted small" data-testid="signed-in-as">
           {text.signedInAs(account.email, copy.roles[account.role])}
