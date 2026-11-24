@@ -103,7 +103,28 @@ test("a CV draft keeps each reference once, in order", () => {
     design: { theme: "aubergine", layout: "sidebar", photoShape: "circle" },
     imageId: null,
     skills: null,
+    skillYears: {},
+    roles: null,
     referenceIds: [E02, E01],
   });
   assert.equal(cvDraftSchema.safeParse({ referenceIds: ["x"] }).success, false);
+});
+
+test("a CV draft keeps years in half-year steps and each role once", () => {
+  const draft = cvDraftSchema.parse({
+    skillYears: { Kotlin: 7.5 },
+    roles: [
+      { name: "Tech Lead", years: 3 },
+      { name: " tech lead ", years: 4 },
+      { name: "Android Engineer" },
+    ],
+  });
+  assert.deepEqual(draft.skillYears, { Kotlin: 7.5 });
+  assert.deepEqual(draft.roles, [
+    { name: "Tech Lead", years: 3 },
+    { name: "Android Engineer", years: null },
+  ]);
+  assert.equal(cvDraftSchema.safeParse({ skillYears: { Kotlin: 7.3 } }).success, false);
+  assert.equal(cvDraftSchema.safeParse({ skillYears: { Kotlin: 0 } }).success, false);
+  assert.equal(cvDraftSchema.safeParse({ roles: [{ name: "", years: 2 }] }).success, false);
 });

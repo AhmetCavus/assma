@@ -7,6 +7,7 @@ import {
   technicalFit,
   type StoredAssessment,
   type CvChoice,
+  type CvRole,
   type CvDesign,
   type CvLanguage,
   type Experience,
@@ -23,6 +24,10 @@ export type Draft = {
   imageId: string | null;
   /** null: the recommended selection (project-relevant first, then most practised). */
   skills: string[] | null;
+  /** Years set by hand per skill. */
+  skillYears: Record<string, number>;
+  /** null: the most practised roles with their detected years. */
+  roles: CvRole[] | null;
   /** null: the interface language. */
   language: CvLanguage | null;
   design: CvDesign;
@@ -33,6 +38,8 @@ export const EMPTY_DRAFT: Draft = {
   referenceIds: [],
   imageId: null,
   skills: null,
+  skillYears: {},
+  roles: null,
   language: null,
   design: DEFAULT_CV_DESIGN,
 };
@@ -69,6 +76,8 @@ export function initialDraft(project: Project, experience: Experience): Draft {
       referenceIds: project.cv.referenceIds.filter((id) => known.has(id)),
       imageId: project.cv.imageId && photos.has(project.cv.imageId) ? project.cv.imageId : null,
       skills: project.cv.skills,
+      skillYears: project.cv.skillYears,
+      roles: project.cv.roles,
       language: project.cv.language,
       design: project.cv.design,
     };
@@ -88,6 +97,8 @@ export function initialDraft(project: Project, experience: Experience): Draft {
     ).slice(0, FIT_LIMITS.cvReferences),
     imageId: firstPhoto,
     skills: null,
+    skillYears: {},
+    roles: null,
     language: null,
     design: DEFAULT_CV_DESIGN,
   };
@@ -107,6 +118,8 @@ export function resolveDraft(
     ),
     imageId: draft.imageId,
     skills: draft.skills ?? defaultSkills(skillRows(experience.references), project),
+    skillYears: draft.skillYears,
+    roles: draft.roles,
     language: draft.language ?? locale,
     design: draft.design,
   };
@@ -123,6 +136,8 @@ export function documentOf(experience: Experience, choice: CvChoice): CvDocument
     }),
     allReferences: experience.references,
     skills: choice.skills,
+    skillYears: choice.skillYears,
+    roles: choice.roles,
     photo: experience.images.find((image) => image.id === choice.imageId)?.dataUrl ?? null,
     language: choice.language,
     design: choice.design,
@@ -137,6 +152,8 @@ export function documentOfSnapshot(snapshot: Snapshot): CvDocument {
     references: snapshot.references,
     allReferences: snapshot.allReferences,
     skills: snapshot.cv.skills,
+    skillYears: snapshot.cv.skillYears,
+    roles: snapshot.cv.roles,
     photo: snapshot.cv.photo,
     language: snapshot.cv.language,
     design: snapshot.cv.design,

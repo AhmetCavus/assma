@@ -24,7 +24,10 @@ export const FIT_LIMITS = {
   referencesPerFinding: 3,
   summary: 1500,
   cvReferences: 20,
-  cvSkills: 24,
+  cvSkills: 40,
+  cvRoles: 12,
+  /** The shortest time a person can set by hand for a skill or a role. */
+  cvMinYears: 1,
 };
 
 export const findingSchema = z.object({
@@ -184,6 +187,17 @@ export function normaliseFindings(
 // ---------------------------------------------------------------------------------------
 // The tailored CV.
 
+/** Years in half-year steps, as the matrix shows them. */
+const cvYears = z.number().min(0.5).max(60).multipleOf(0.5);
+
+/** A line under "Berufserfahrung": a detected role, or one the person added. */
+export const cvRoleSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  /** null: the years computed from the references (only for a detected role). */
+  years: cvYears.nullable().default(null),
+});
+export type CvRole = z.infer<typeof cvRoleSchema>;
+
 export const cvDraftSchema = z.object({
   summary: z.string().trim().max(FIT_LIMITS.summary).default(""),
   /** Language of headings, dates and units; null follows the interface language. */
@@ -197,6 +211,27 @@ export const cvDraftSchema = z.object({
     .max(FIT_LIMITS.cvSkills)
     .nullable()
     .default(null),
+  /** Years the person set for a skill, by skill name, instead of the computed ones. */
+  skillYears: z
+    .record(z.string().trim().min(1).max(40), cvYears)
+    .refine((years) => Object.keys(years).length <= 100, "too_many")
+    .default({}),
+  /** The lines under "Berufserfahrung", in order; null shows the most practised roles. */
+  roles: z
+    .array(cvRoleSchema)
+    .max(FIT_LIMITS.cvRoles)
+    .nullable()
+    .default(null)
+    .transform((roles) => {
+      if (!roles) {
+        return roles;
+      }
+      const seen = new Set<string>();
+      return roles.filter((role) => {
+        const key = role.name.toLowerCase();
+        return seen.has(key) ? false : (seen.add(key), true);
+      });
+    }),
   /** Selected references in CV order. */
   referenceIds: z
     .array(identifier)

@@ -145,6 +145,60 @@ export function defaultSkills(
   return [...relevant, ...others].slice(0, limit).map((row) => row.name);
 }
 
+/** Skill names in alphabetical order, ignoring case and accents. */
+export function alphabetical<T extends { name: string }>(rows: readonly T[], locale = "de"): T[] {
+  return [...rows].sort((a, b) => a.name.localeCompare(b.name, locale, { sensitivity: "base" }));
+}
+
+/** The years the person set for a skill, whatever its spelling, or undefined. */
+export function yearsSetFor(skillYears: Readonly<Record<string, number>>, name: string) {
+  const key = keyOf(name);
+  return Object.entries(skillYears).find(([skill]) => keyOf(skill) === key)?.[1];
+}
+
+/**
+ * The skill matrix of a CV: the chosen skills with the years the person set or the computed
+ * ones, in alphabetical order.
+ */
+export function cvMatrix(
+  rows: readonly MatrixRow[],
+  skills: readonly string[],
+  skillYears: Readonly<Record<string, number>>,
+  locale = "de",
+): MatrixRow[] {
+  const byName = new Map(rows.map((row) => [keyOf(row.name), row]));
+  return alphabetical(
+    skills.flatMap((name) => {
+      const row = byName.get(keyOf(name));
+      return row ? [{ ...row, years: yearsSetFor(skillYears, row.name) ?? row.years }] : [];
+    }),
+    locale,
+  );
+}
+
+/** How many roles a CV lists when the person has not chosen. */
+export const DEFAULT_ROLE_COUNT = 6;
+
+/**
+ * The lines under "Berufserfahrung": the most practised roles when nothing was chosen,
+ * otherwise the chosen ones with the years set or detected; an added role needs its years.
+ */
+export function cvRoles(
+  rows: readonly MatrixRow[],
+  roles: readonly { name: string; years: number | null }[] | null,
+): { name: string; years: number }[] {
+  if (roles === null) {
+    return rows.slice(0, DEFAULT_ROLE_COUNT).map(({ name, years }) => ({ name, years }));
+  }
+  const byName = new Map(rows.map((row) => [keyOf(row.name), row]));
+  return roles
+    .flatMap((role) => {
+      const years = role.years ?? byName.get(keyOf(role.name))?.years;
+      return years === undefined ? [] : [{ name: role.name.trim(), years }];
+    })
+    .sort((a, b) => b.years - a.years);
+}
+
 /** "5 Jahre" / "5 years", with a half shown as ",5" or ".5" by the locale. */
 export function formatYears(years: number, locale: string, unit: { one: string; many: string }) {
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(years);

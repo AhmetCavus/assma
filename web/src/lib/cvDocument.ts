@@ -1,8 +1,11 @@
 import {
   CV_THEMES,
+  cvMatrix,
+  cvRoles,
   formatPeriod,
   formatYears,
   LOCALES,
+  PHOTO_ON_PANEL,
   roleRows,
   skillRows,
   sortEducation,
@@ -79,6 +82,10 @@ export function cvDocument(options: {
   /** All references, for the years in the matrix and the total experience. */
   allReferences: readonly ExperienceReference[];
   skills: readonly string[];
+  /** Years the person set per skill, instead of the computed ones. */
+  skillYears: Readonly<Record<string, number>>;
+  /** The chosen lines under "Berufserfahrung"; null for the most practised roles. */
+  roles: readonly { name: string; years: number | null }[] | null;
   photo: string | null;
   language: CvLanguage;
   design: CvDesign;
@@ -88,8 +95,6 @@ export function cvDocument(options: {
   const copy = LOCALES[language];
   const text = copy.cv;
   const years = (value: number) => formatYears(value, language, text.yearsUnit);
-  const rows = skillRows(options.allReferences);
-  const byName = new Map(rows.map((row) => [row.name.toLowerCase(), row]));
   const total = totalYears(options.allReferences);
   return {
     language,
@@ -110,19 +115,22 @@ export function cvDocument(options: {
       },
     ].filter((entry) => entry.value),
     summary: options.summary.trim(),
-    matrix: options.skills
-      .map((name) => byName.get(name.toLowerCase()))
-      .filter((row): row is NonNullable<typeof row> => Boolean(row))
-      .map((row) => ({
-        name: row.name,
-        years: row.years,
-        yearsLabel: years(row.years),
-        projects: String(row.projects),
-        lastUsed: String(row.lastYear),
-      })),
-    roles: roleRows(options.allReferences)
-      .slice(0, 6)
-      .map((row) => ({ name: row.name, yearsLabel: years(row.years) })),
+    matrix: cvMatrix(
+      skillRows(options.allReferences),
+      options.skills,
+      options.skillYears,
+      language,
+    ).map((row) => ({
+      name: row.name,
+      years: row.years,
+      yearsLabel: years(row.years),
+      projects: String(row.projects),
+      lastUsed: String(row.lastYear),
+    })),
+    roles: cvRoles(roleRows(options.allReferences), options.roles).map((row) => ({
+      name: row.name,
+      yearsLabel: years(row.years),
+    })),
     references: options.references.map((reference) => ({
       organization: reference.organization,
       role: reference.role,
@@ -369,8 +377,7 @@ function dataUrlBytes(dataUrl: string): Uint8Array {
 
 /** The frame colour: the light accent on colour areas, the theme accent on white. */
 export function frameColor(cv: Pick<CvDocument, "design" | "palette">): Rgb {
-  const onPanel = ["sidebar", "sidebarRight", "header"].includes(cv.design.layout);
-  return onPanel ? cv.palette.panelMuted : cv.palette.accent;
+  return PHOTO_ON_PANEL.includes(cv.design.layout) ? cv.palette.panelMuted : cv.palette.accent;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -448,13 +455,34 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
   // Page decoration per layout: the colour areas behind the columns.
   const SIDEBAR = 196;
   const BAND = 176;
+  const STRIPE = 12;
+  /** Width of the heading column of the margin layout. */
+  const LABEL = 108;
+  /** Height of the banner, known once its content is measured. */
+  let bannerHeight = 0;
   const pages: ReturnType<typeof pdf.addPage>[] = [];
   const page = (index: number) => {
     while (pages.length <= index) {
       const added = pdf.addPage([WIDTH, HEIGHT]);
       const number = pages.length;
-      if (layout === "sidebar") {
-        added.drawRectangle({ x: 0, y: 0, width: SIDEBAR, height: HEIGHT, color: color(P.panel) });
+      if (layout === "sidebar" || layout === "sidebarSoft") {
+        added.drawRectangle({
+          x: 0,
+          y: 0,
+          width: SIDEBAR,
+          height: HEIGHT,
+          color: color(layout === "sidebar" ? P.panel : P.tint),
+        });
+      } else if (layout === "banner" && number === 0) {
+        added.drawRectangle({
+          x: 0,
+          y: HEIGHT - bannerHeight,
+          width: WIDTH,
+          height: bannerHeight,
+          color: color(P.panel),
+        });
+      } else if (layout === "columns") {
+        added.drawRectangle({ x: 0, y: 0, width: STRIPE, height: HEIGHT, color: color(P.panel) });
       } else if (layout === "sidebarRight") {
         added.drawRectangle({
           x: WIDTH - SIDEBAR,
@@ -485,10 +513,13 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
     return pages[index]!;
   };
 
-  type Tone = "panel" | "paper";
+  /** Colour area, white paper, or the light tint of the soft sidebar. */
+  type Tone = "panel" | "paper" | "soft";
+  const WHITE: Rgb = [1, 1, 1];
   const tones = {
     panel: { text: P.panelText, muted: P.panelMuted, track: P.panelTrack, strong: P.panelText },
     paper: { text: P.ink, muted: P.sub, track: P.track, strong: P.accent },
+    soft: { text: P.ink, muted: P.sub, track: WHITE, strong: P.accent },
   };
 
   /** A column that writes top to bottom and continues on the next page when full. */
@@ -525,6 +556,7 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
         gap?: number;
         indent?: number;
         leading?: number;
+        align?: "left" | "center";
       } = {},
     ) {
       const font = settings.font ?? regular;
@@ -535,7 +567,10 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
         const target = this.ensure(leading);
         this.y -= leading;
         target.drawText(line, {
-          x: this.x + indent,
+          x:
+            settings.align === "center"
+              ? this.x + (this.width - font.widthOfTextAtSize(line, size)) / 2
+              : this.x + indent,
           y: this.y + size * 0.28,
           size,
           font,
@@ -593,9 +628,49 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
 
   // Sections ------------------------------------------------------------------------------
 
-  const heading = (flow: Flow, label: string) => {
+  /** Where the last heading of the margin layout ends, so the next one cannot overlap it. */
+  let marginFloor: { page: number; y: number } | null = null;
+
+  /** A section heading; `keep` is the room it needs below, so it never ends a page alone. */
+  const heading = (flow: Flow, label: string, keep = 46) => {
+    if (layout === "margin" && flow.x === MARGIN + LABEL) {
+      // The heading stands in the margin column, level with the start of its section.
+      flow.space(18);
+      if (marginFloor?.page === flow.page) {
+        flow.y = Math.min(flow.y, marginFloor.y);
+      }
+      const target = flow.ensure(keep);
+      const lines = wrap(label.toUpperCase(), bold, 8.2, LABEL - 14);
+      lines.forEach((line, index) =>
+        target.drawText(line, {
+          x: MARGIN,
+          y: flow.y - 9 - index * 11,
+          size: 8.2,
+          font: bold,
+          color: color(P.accent),
+        }),
+      );
+      const barY = flow.y - 9 - (lines.length - 1) * 11 - 7;
+      target.drawRectangle({ x: MARGIN, y: barY, width: 22, height: 1.6, color: color(P.accent) });
+      marginFloor = { page: flow.page, y: barY - 8 };
+      return;
+    }
+    if (layout === "minimal") {
+      flow.space(20);
+      flow.ensure(keep);
+      flow.text(label.toUpperCase(), { font: bold, size: 9, color: P.ink, gap: 3 });
+      page(flow.page).drawRectangle({
+        x: flow.x,
+        y: flow.y + 1,
+        width: flow.width,
+        height: 0.6,
+        color: color(P.line),
+      });
+      flow.space(8);
+      return;
+    }
     flow.space(flow.kind === "panel" ? 16 : 18);
-    flow.ensure(46);
+    flow.ensure(keep);
     if (flow.kind === "panel") {
       flow.text(label.toUpperCase(), { font: bold, size: 8.5, color: P.panelMuted, gap: 4 });
       page(flow.page).drawRectangle({
@@ -654,7 +729,7 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
     if (cv.matrix.length === 0) {
       return;
     }
-    heading(flow, cv.labels.matrix);
+    heading(flow, cv.labels.matrix, 80);
     const longest = Math.max(...cv.matrix.map((row) => row.years), 1);
     for (const row of cv.matrix) {
       flow.pair(row.name, row.yearsLabel, {
@@ -674,7 +749,7 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
     if (cv.matrix.length === 0) {
       return;
     }
-    heading(flow, cv.labels.matrix);
+    heading(flow, cv.labels.matrix, 80);
     const longest = Math.max(...cv.matrix.map((row) => row.years), 1);
     const gap = 26;
     const columnWidth = (flow.width - gap) / 2;
@@ -713,7 +788,7 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
     if (cv.matrix.length === 0) {
       return;
     }
-    heading(flow, cv.labels.matrix);
+    heading(flow, cv.labels.matrix, 80);
     const columns = [
       { label: cv.labels.skillColumn, x: 0 },
       { label: cv.labels.yearsColumn, x: flow.width * 0.52 },
@@ -791,7 +866,7 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
     if (cv.references.length === 0) {
       return;
     }
-    heading(flow, cv.labels.projects);
+    heading(flow, cv.labels.projects, 120);
     const indent = dates ? 92 : 14;
     for (const reference of cv.references) {
       flow.space(6);
@@ -977,29 +1052,39 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
         gap: 4,
       });
     }
-    if (cv.experience) {
-      const size = 8.6;
-      const label = clean(cv.experience);
-      const pillWidth = semibold.widthOfTextAtSize(label, size) + 16;
-      flow.space(4);
-      const target = flow.ensure(20);
-      flow.y -= 16;
-      target.drawRectangle({
-        x: flow.x,
-        y: flow.y,
-        width: pillWidth,
-        height: 16,
-        color: color(onPanel ? P.panelTrack : P.tint),
-      });
-      target.drawText(label, {
-        x: flow.x + 8,
-        y: flow.y + 4.8,
-        size,
-        font: semibold,
-        color: color(onPanel ? P.panelText : P.accent),
-      });
-    }
+    experiencePill(flow);
   };
+
+  /** The total experience as a pill, left-aligned or centred in the flow. */
+  const experiencePill = (flow: Flow, centred = false) => {
+    if (!cv.experience) {
+      return;
+    }
+    const onPanel = flow.kind === "panel";
+    const size = 8.6;
+    const label = clean(cv.experience);
+    const pillWidth = semibold.widthOfTextAtSize(label, size) + 16;
+    const x = centred ? flow.x + (flow.width - pillWidth) / 2 : flow.x;
+    flow.space(4);
+    const target = flow.ensure(20);
+    flow.y -= 16;
+    target.drawRectangle({
+      x,
+      y: flow.y,
+      width: pillWidth,
+      height: 16,
+      color: color(onPanel ? P.panelTrack : P.tint),
+    });
+    target.drawText(label, {
+      x: x + 8,
+      y: flow.y + 4.8,
+      size,
+      font: semibold,
+      color: color(onPanel ? P.panelText : P.accent),
+    });
+  };
+
+  const contactLine = cv.contact.map((entry) => entry.value.replace(/\n/g, ", ")).join("   ·   ");
 
   const photo = cv.photo
     ? await pdf.embedPng(
@@ -1014,10 +1099,15 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
 
   // Layouts -------------------------------------------------------------------------------
 
-  if (layout === "sidebar" || layout === "sidebarRight") {
-    const left = layout === "sidebar";
+  if (layout === "sidebar" || layout === "sidebarRight" || layout === "sidebarSoft") {
+    const left = layout !== "sidebarRight";
     const sideX = left ? 0 : WIDTH - SIDEBAR;
-    const side = new Flow(sideX + 24, SIDEBAR - 48, HEIGHT - TOP, "panel");
+    const side = new Flow(
+      sideX + 24,
+      SIDEBAR - 48,
+      HEIGHT - TOP,
+      layout === "sidebarSoft" ? "soft" : "panel",
+    );
     const main = new Flow(
       left ? SIDEBAR + 30 : MARGIN,
       WIDTH - SIDEBAR - 30 - MARGIN,
@@ -1106,6 +1196,127 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
     }
     certificates(full);
     hobbies(full);
+  } else if (layout === "banner") {
+    // A centred colour banner with photo, name and contact, then one full-width column.
+    const photoSize = 96;
+    const inner = WIDTH - 2 * MARGIN;
+    const contactLines = contactLine ? wrap(contactLine, regular, 8.8, inner).length : 0;
+    bannerHeight =
+      26 +
+      (photo ? photoSize + 10 : 0) +
+      25 * 1.15 +
+      2 +
+      (cv.headline ? 13 * 1.42 + 4 : 0) +
+      (cv.experience ? 20 : 0) +
+      (contactLines > 0 ? 8 + contactLines * 8.8 * 1.5 : 0) +
+      24;
+    page(0);
+    if (photo) {
+      drawPhoto((WIDTH - photoSize) / 2, HEIGHT - 26, photoSize);
+    }
+    const band = new Flow(MARGIN, inner, HEIGHT - 26 - (photo ? photoSize + 10 : 0), "panel");
+    band.text(cv.name || "CV", { font: bold, size: 25, leading: 1.15, gap: 2, align: "center" });
+    if (cv.headline) {
+      band.text(cv.headline, {
+        font: semibold,
+        size: 13,
+        color: P.panelMuted,
+        gap: 4,
+        align: "center",
+      });
+    }
+    experiencePill(band, true);
+    if (contactLine) {
+      band.space(8);
+      band.text(contactLine, { size: 8.8, leading: 1.5, align: "center" });
+    }
+    const full = new Flow(MARGIN, inner, HEIGHT - bannerHeight - 4, "paper");
+    summary(full);
+    matrixGrid(full);
+    roles(full);
+    projects(full);
+    education(full);
+    languages(full);
+    certificates(full);
+    hobbies(full);
+  } else if (layout === "minimal" || layout === "margin") {
+    // No colour areas: a quiet header, then one column; the margin layout sets the headings
+    // in a column of their own on the left.
+    page(0);
+    const photoSize = 92;
+    const head = new Flow(
+      MARGIN,
+      WIDTH - 2 * MARGIN - (photo ? photoSize + 20 : 0),
+      HEIGHT - TOP,
+      "paper",
+    );
+    if (photo) {
+      drawPhoto(WIDTH - MARGIN - photoSize, HEIGHT - TOP, photoSize);
+    }
+    if (layout === "minimal") {
+      head.text(cv.name || "CV", { font: bold, size: 28, color: P.ink, leading: 1.15, gap: 3 });
+      if (cv.headline) {
+        head.text(cv.headline, { size: 12.5, color: P.sub, gap: 3 });
+      }
+      if (cv.experience) {
+        head.text(cv.experience, { font: semibold, size: 9, color: P.accent, gap: 2 });
+      }
+    } else {
+      identity(head, 26);
+    }
+    if (contactLine) {
+      head.space(6);
+      head.text(contactLine, { size: 8.8, color: P.sub, leading: 1.5 });
+    }
+    const top = Math.min(head.y, photo ? HEIGHT - TOP - photoSize : head.y) - 6;
+    const indent = layout === "margin" ? LABEL : 0;
+    const full = new Flow(MARGIN + indent, WIDTH - 2 * MARGIN - indent, top, "paper");
+    summary(full);
+    matrixGrid(full);
+    roles(full);
+    projects(full);
+    education(full);
+    languages(full);
+    certificates(full);
+    hobbies(full);
+  } else if (layout === "columns") {
+    // A colour stripe on the left edge, photo beside the name, then two equal columns.
+    page(0);
+    const photoSize = 100;
+    const left = MARGIN + 4;
+    const inner = WIDTH - left - MARGIN;
+    if (photo) {
+      drawPhoto(left, HEIGHT - TOP, photoSize);
+    }
+    const head = new Flow(
+      left + (photo ? photoSize + 22 : 0),
+      inner - (photo ? photoSize + 22 : 0),
+      HEIGHT - TOP - 4,
+      "paper",
+    );
+    identity(head, 27);
+    if (contactLine) {
+      head.space(6);
+      head.text(contactLine, { size: 8.8, color: P.sub, leading: 1.5 });
+    }
+    const full = new Flow(
+      left,
+      inner,
+      Math.min(head.y, photo ? HEIGHT - TOP - photoSize : head.y) - 6,
+      "paper",
+    );
+    summary(full);
+    const gap = 28;
+    const columnWidth = (inner - gap) / 2;
+    const main = new Flow(left, columnWidth, 0, "paper").after(full);
+    const aside = new Flow(left + columnWidth + gap, columnWidth, 0, "paper").after(full);
+    projects(main);
+    matrixBars(aside);
+    roles(aside);
+    education(aside);
+    languages(aside);
+    certificates(aside);
+    hobbies(aside);
   } else {
     // Modern: header with the photo on the right, full-width profile and skill grid, then
     // two columns.

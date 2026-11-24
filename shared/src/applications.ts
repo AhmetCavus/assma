@@ -3,7 +3,7 @@ import { identifier } from "./account.js";
 import { CV_LANGUAGES, cvDesignSchema } from "./cvDesign.js";
 import { assessmentSummarySchema } from "./assessmentView.js";
 import { experienceProfileSchema, experienceReferenceSchema } from "./experience.js";
-import { cvDraftSchema, fitSchema } from "./fit.js";
+import { cvDraftSchema, FIT_LIMITS, fitSchema } from "./fit.js";
 import { projectStatusSchema, type ProjectStatus } from "./projects.js";
 
 /**
@@ -57,7 +57,7 @@ export type PortalDetails = z.infer<typeof portalDetailsSchema>;
 /** The CV as it was chosen for this application, with every choice resolved. */
 export const cvChoiceSchema = cvDraftSchema.extend({
   language: z.enum(CV_LANGUAGES),
-  skills: z.array(z.string().trim().min(1).max(40)).max(24),
+  skills: z.array(z.string().trim().min(1).max(40)).max(FIT_LIMITS.cvSkills),
 });
 export type CvChoice = z.infer<typeof cvChoiceSchema>;
 
@@ -123,6 +123,11 @@ export const snapshotSchema = z.object({
   cv: z.object({
     summary: z.string(),
     skills: z.array(z.string()),
+    skillYears: z.record(z.string(), z.number()).default({}),
+    roles: z
+      .array(z.object({ name: z.string(), years: z.number().nullable() }))
+      .nullable()
+      .default(null),
     language: z.enum(CV_LANGUAGES),
     design: cvDesignSchema,
     /** The photo as a data URL, or null for none. */

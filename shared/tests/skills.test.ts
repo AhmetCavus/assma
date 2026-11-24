@@ -8,6 +8,8 @@ import {
   educationSchema,
   sortEducation,
   coveredMonths,
+  cvMatrix,
+  cvRoles,
   defaultSkills,
   formatYears,
   profileInputSchema,
@@ -139,7 +141,8 @@ test("education needs a degree and an end not before its start; newest first", (
 });
 
 test("the design keeps the original layout as default and rejects unknown options", () => {
-  assert.equal(CV_LAYOUTS.length, 5);
+  assert.equal(CV_LAYOUTS.length, 10);
+  assert.equal(CV_THEME_IDS.length, 11);
   assert.equal(CV_LAYOUTS[0], "sidebar");
   assert.deepEqual(cvDesignSchema.parse({}), {
     theme: "aubergine",
@@ -149,4 +152,40 @@ test("the design keeps the original layout as default and rejects unknown option
   assert.ok(CV_THEME_IDS.includes("sand"));
   assert.equal(cvDesignSchema.safeParse({ layout: "fancy" }).success, false);
   assert.equal(cvDesignSchema.safeParse({ photoShape: "star" }).success, false);
+});
+
+test("the CV matrix lists chosen skills alphabetically with the years set by hand", () => {
+  const rows = skillRows(references, "2024-12");
+  const talkBack = rows.find((row) => row.name === "TalkBack")!.years;
+  const matrix = cvMatrix(rows, ["TalkBack", "kotlin", "Unknown"], { KOTLIN: 7 }, "de");
+  assert.deepEqual(
+    matrix.map((row) => [row.name, row.years]),
+    [
+      ["Kotlin", 7],
+      ["TalkBack", talkBack],
+    ],
+  );
+});
+
+test("work experience shows the top roles, or the chosen and added ones with their years", () => {
+  const rows = [
+    { name: "Android Engineer", years: 6, projects: 3, lastYear: 2024 },
+    { name: "Mobile Lead", years: 2, projects: 1, lastYear: 2023 },
+  ];
+  assert.deepEqual(cvRoles(rows, null), [
+    { name: "Android Engineer", years: 6 },
+    { name: "Mobile Lead", years: 2 },
+  ]);
+  assert.deepEqual(
+    cvRoles(rows, [
+      { name: "mobile lead", years: null },
+      { name: "Tech Lead", years: 9 },
+      // An added role without years has nothing to show.
+      { name: "Architect", years: null },
+    ]),
+    [
+      { name: "Tech Lead", years: 9 },
+      { name: "mobile lead", years: 2 },
+    ],
+  );
 });

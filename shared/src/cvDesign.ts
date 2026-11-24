@@ -97,14 +97,83 @@ export const CV_THEMES = {
     tint: "#f4ebdd",
     track: "#ece2d2",
   }),
+  petrol: palette({
+    ...BASE,
+    panel: "#0f3d3e",
+    panelText: "#ffffff",
+    panelMuted: "#9fd6cf",
+    panelTrack: "#2a5859",
+    accent: "#13706d",
+    tint: "#e0f2ef",
+    track: "#d3ebe7",
+  }),
+  midnight: palette({
+    ...BASE,
+    panel: "#141b34",
+    panelText: "#ffffff",
+    panelMuted: "#b9c4f2",
+    panelTrack: "#2e3656",
+    accent: "#3b4fa8",
+    tint: "#e6e9f8",
+    track: "#dadff3",
+  }),
+  terracotta: palette({
+    ...BASE,
+    panel: "#5a2a1c",
+    panelText: "#ffffff",
+    panelMuted: "#f3c3a8",
+    panelTrack: "#774233",
+    accent: "#a4482a",
+    tint: "#f9e7de",
+    track: "#f1dbd0",
+  }),
+  olive: palette({
+    ...BASE,
+    panel: "#33381c",
+    panelText: "#ffffff",
+    panelMuted: "#d6dc9c",
+    panelTrack: "#4c5233",
+    accent: "#5d6a1c",
+    tint: "#eef0dc",
+    track: "#e4e7cd",
+  }),
+  mist: palette({
+    ...BASE,
+    panel: "#e4ebf2",
+    panelText: "#1f2a36",
+    panelMuted: "#44627f",
+    panelTrack: "#cbd6e1",
+    accent: "#3a5f83",
+    tint: "#e8eff6",
+    track: "#dde6ef",
+  }),
 } satisfies Record<string, CvPalette>;
 
 export type CvThemeId = keyof typeof CV_THEMES;
 export const CV_THEME_IDS = Object.keys(CV_THEMES) as CvThemeId[];
 
 /** The first layout is the original one and stays the default. */
-export const CV_LAYOUTS = ["sidebar", "sidebarRight", "header", "classic", "modern"] as const;
+export const CV_LAYOUTS = [
+  "sidebar",
+  "sidebarRight",
+  "header",
+  "classic",
+  "modern",
+  "sidebarSoft",
+  "banner",
+  "minimal",
+  "margin",
+  "columns",
+] as const;
 export type CvLayoutId = (typeof CV_LAYOUTS)[number];
+
+/** Layouts whose photo sits on the colour area, so its frame takes the light accent. */
+export const PHOTO_ON_PANEL: readonly CvLayoutId[] = [
+  "sidebar",
+  "sidebarRight",
+  "header",
+  "banner",
+];
 
 export const PHOTO_SHAPES = ["circle", "rounded", "square", "hexagon", "ring"] as const;
 export type PhotoShape = (typeof PHOTO_SHAPES)[number];

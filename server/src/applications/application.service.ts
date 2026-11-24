@@ -170,6 +170,8 @@ export async function createApplication(account: Account, input: unknown): Promi
     cv: {
       summary: parsed.cv.summary,
       skills: parsed.cv.skills,
+      skillYears: parsed.cv.skillYears,
+      roles: parsed.cv.roles,
       language: parsed.cv.language,
       design: parsed.cv.design,
       photo,

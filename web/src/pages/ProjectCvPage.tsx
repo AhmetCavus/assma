@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import {
   CV_LANGUAGES,
   CV_LAYOUTS,
@@ -8,12 +8,18 @@ import {
   PHOTO_SHAPES,
   type CvDesign,
   type CvLanguage,
+  type CvRole,
+  alphabetical,
+  DEFAULT_ROLE_COUNT,
   defaultSkills,
   FIT_LIMITS,
   formatYears,
   referenceLabel,
   relevantTo,
+  roleRows,
   skillRows,
+  totalYears,
+  yearsSetFor,
   evidence,
   toApiError,
   type EvidenceSuggestion,
@@ -89,6 +95,11 @@ export function ProjectCvPage({
   }, [api, id]);
 
   const rows = useMemo(() => (experience ? skillRows(experience.references) : []), [experience]);
+  const detectedRoles = useMemo(
+    () => (experience ? roleRows(experience.references) : []),
+    [experience],
+  );
+  const [newRole, setNewRole] = useState("");
 
   // The assistant rewrites the summary in the draft; saving stays the person's step.
   useAssistantPage({
@@ -141,6 +152,8 @@ export function ProjectCvPage({
     references: selected,
     allReferences: references,
     skills,
+    skillYears: draft.skillYears,
+    roles: draft.roles,
     photo,
     language: cvLanguage,
     design: draft.design,
@@ -222,6 +235,84 @@ export function ProjectCvPage({
       };
     });
 
+  // Years set by hand: at least one, at most the whole professional experience.
+  const maxYears = Math.max(FIT_LIMITS.cvMinYears, totalYears(references));
+  const sortedRows = alphabetical(rows, locale);
+  const skillLimitReached = skills.length >= FIT_LIMITS.cvSkills;
+
+  const setSkills = (next: string[]) => {
+    setDraft((current) => ({ ...current, skills: next.slice(0, FIT_LIMITS.cvSkills) }));
+    setStatus("");
+  };
+
+  /** Sets the years of a skill; the computed value removes the hand-set one. */
+  const setSkillYears = (name: string, value: number | null) =>
+    setDraft((current) => {
+      const skillYears = Object.fromEntries(
+        Object.entries(current.skillYears).filter(
+          ([skill]) => skill.toLowerCase() !== name.toLowerCase(),
+        ),
+      );
+      const detected = rows.find((row) => row.name === name)?.years;
+      return {
+        ...current,
+        skillYears:
+          value === null || value === detected ? skillYears : { ...skillYears, [name]: value },
+      };
+    });
+
+  const defaultRoles: CvRole[] = detectedRoles
+    .slice(0, DEFAULT_ROLE_COUNT)
+    .map((row) => ({ name: row.name, years: null }));
+  const chosenRoles = draft.roles ?? defaultRoles;
+  const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const roleChoice = (name: string) => chosenRoles.find((role) => sameName(role.name, name));
+  const customRoles = chosenRoles.filter(
+    (role) => !detectedRoles.some((row) => sameName(row.name, role.name)),
+  );
+  const roleLimitReached = chosenRoles.length >= FIT_LIMITS.cvRoles;
+
+  const updateRoles = (change: (roles: CvRole[]) => CvRole[]) => {
+    setDraft((current) => ({
+      ...current,
+      roles: change(current.roles ?? defaultRoles).slice(0, FIT_LIMITS.cvRoles),
+    }));
+    setStatus("");
+  };
+
+  const toggleRole = (name: string) =>
+    updateRoles((roles) =>
+      roles.some((role) => sameName(role.name, name))
+        ? roles.filter((role) => !sameName(role.name, name))
+        : [...roles, { name, years: null }],
+    );
+
+  const setRoleYears = (name: string, value: number | null) => {
+    const detected = detectedRoles.find((row) => sameName(row.name, name))?.years;
+    updateRoles((roles) =>
+      roles.map((role) =>
+        sameName(role.name, name)
+          ? { ...role, years: value === detected && detected !== undefined ? null : value }
+          : role,
+      ),
+    );
+  };
+
+  const addRole = () => {
+    const name = newRole.trim().slice(0, 80);
+    if (!name || roleLimitReached) {
+      return;
+    }
+    if (!roleChoice(name)) {
+      const detected = detectedRoles.find((row) => sameName(row.name, name));
+      updateRoles((roles) => [
+        ...roles,
+        detected ? { name: detected.name, years: null } : { name, years: FIT_LIMITS.cvMinYears },
+      ]);
+    }
+    setNewRole("");
+  };
+
   async function save(): Promise<boolean> {
     setError("");
     setBusy(true);
@@ -267,7 +358,7 @@ export function ProjectCvPage({
   const years = (value: number) => formatYears(value, locale, text.yearsUnit);
 
   return (
-    <div className="page wide">
+    <div className="page wide cv-page">
       <a
         className="link back-link"
         href={`/projects/${id}`}
@@ -431,98 +522,229 @@ export function ProjectCvPage({
             </label>
           </div>
 
-          <div className="section-row">
-            <h3 className="section-title">{text.skillsTitle}</h3>
-            {draft.skills !== null && (
-              <button
-                type="button"
-                className="link"
-                onClick={() => setDraft((current) => ({ ...current, skills: null }))}
-              >
-                {text.skillsAuto}
-              </button>
+          <CvSection
+            id="skills"
+            title={text.skillsTitle}
+            meta={
+              rows.length > 0
+                ? text.skillsChosen(
+                    rows.filter((row) => skills.includes(row.name)).length,
+                    rows.length,
+                  )
+                : ""
+            }
+          >
+            {rows.length > 0 && (
+              <span className="section-links">
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => setSkills(defaultSkills(rows, project, FIT_LIMITS.cvSkills))}
+                  disabled={skills.length === Math.min(rows.length, FIT_LIMITS.cvSkills)}
+                >
+                  {text.selectAll}
+                </button>
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => setSkills([])}
+                  disabled={skills.length === 0}
+                >
+                  {text.deselectAll}
+                </button>
+                {draft.skills !== null && (
+                  <button
+                    type="button"
+                    className="link"
+                    onClick={() => setDraft((current) => ({ ...current, skills: null }))}
+                  >
+                    {text.skillsAuto}
+                  </button>
+                )}
+              </span>
             )}
-          </div>
-          <p className="muted small">{text.skillsHint}</p>
-          {rows.length === 0 ? (
-            <p className="muted">{text.noSkills}</p>
-          ) : (
-            <ul className="skill-choices">
-              {rows.map((row) => {
-                const chosen = skills.includes(row.name);
-                return (
-                  <li key={row.name}>
-                    <label className={`chip ${chosen ? "selected" : ""}`}>
-                      <input
-                        type="checkbox"
-                        className="visually-hidden"
-                        checked={chosen}
-                        onChange={() => toggleSkill(row.name)}
+            <p className="muted small">{text.skillsHint}</p>
+            {rows.length === 0 ? (
+              <p className="muted">{text.noSkills}</p>
+            ) : (
+              <>
+                {skillLimitReached && (
+                  <p className="muted small">{text.skillsLimit(FIT_LIMITS.cvSkills)}</p>
+                )}
+                <ul className="year-list">
+                  {sortedRows.map((row) => {
+                    const set = yearsSetFor(draft.skillYears, row.name);
+                    return (
+                      <YearRow
+                        key={row.name}
+                        name={row.name}
+                        relevant={relevantTo(row.name, project)}
+                        chosen={skills.includes(row.name)}
+                        canChoose={!skillLimitReached}
+                        value={set ?? row.years}
+                        detected={row.years}
+                        max={maxYears}
+                        years={years}
+                        text={text}
+                        onToggle={() => toggleSkill(row.name)}
+                        onYears={(value) => setSkillYears(row.name, value)}
                       />
-                      {relevantTo(row.name, project) && (
-                        <span className="relevant" aria-hidden="true">
-                          ★
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </CvSection>
+
+          <CvSection
+            id="roles"
+            title={text.rolesTitle}
+            meta={
+              detectedRoles.length + customRoles.length > 0
+                ? text.skillsChosen(chosenRoles.length, detectedRoles.length + customRoles.length)
+                : ""
+            }
+          >
+            {draft.roles !== null && (
+              <span className="section-links">
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => setDraft((current) => ({ ...current, roles: null }))}
+                >
+                  {text.rolesAuto}
+                </button>
+              </span>
+            )}
+            <p className="muted small">{text.rolesHint}</p>
+            {detectedRoles.length === 0 && customRoles.length === 0 ? (
+              <p className="muted">{text.noRoles}</p>
+            ) : (
+              <ul className="year-list">
+                {detectedRoles.map((row) => {
+                  const choice = roleChoice(row.name);
+                  return (
+                    <YearRow
+                      key={row.name}
+                      name={row.name}
+                      chosen={Boolean(choice)}
+                      canChoose={!roleLimitReached}
+                      value={choice?.years ?? row.years}
+                      detected={row.years}
+                      max={maxYears}
+                      years={years}
+                      text={text}
+                      onToggle={() => toggleRole(row.name)}
+                      onYears={(value) => setRoleYears(row.name, value)}
+                    />
+                  );
+                })}
+                {customRoles.map((role) => (
+                  <YearRow
+                    key={`custom-${role.name}`}
+                    name={role.name}
+                    chosen
+                    canChoose
+                    value={role.years ?? FIT_LIMITS.cvMinYears}
+                    detected={null}
+                    max={maxYears}
+                    years={years}
+                    text={text}
+                    onRemove={() =>
+                      updateRoles((roles) =>
+                        roles.filter((entry) => !sameName(entry.name, role.name)),
+                      )
+                    }
+                    onYears={(value) => setRoleYears(role.name, value ?? FIT_LIMITS.cvMinYears)}
+                  />
+                ))}
+              </ul>
+            )}
+            <form
+              className="role-add"
+              onSubmit={(event) => {
+                event.preventDefault();
+                addRole();
+              }}
+            >
+              <label>
+                <span className="visually-hidden">{text.roleAddLabel}</span>
+                <input
+                  value={newRole}
+                  onChange={(event) => setNewRole(event.target.value)}
+                  placeholder={text.rolePlaceholder}
+                  maxLength={80}
+                  aria-label={text.roleAddLabel}
+                />
+              </label>
+              <button type="submit" className="pill" disabled={!newRole.trim() || roleLimitReached}>
+                {text.roleAdd}
+              </button>
+            </form>
+            {roleLimitReached && (
+              <p className="muted small">{text.rolesLimit(FIT_LIMITS.cvRoles)}</p>
+            )}
+          </CvSection>
+
+          <CvSection
+            id="references"
+            title={text.referencesTitle}
+            meta={
+              references.length > 0
+                ? text.skillsChosen(draft.referenceIds.length, references.length)
+                : ""
+            }
+          >
+            <p className="muted small">{text.referencesHint}</p>
+            {references.length === 0 ? (
+              <p className="muted">{text.noReferences}</p>
+            ) : (
+              <ul className="cv-references">
+                {ordered.map((reference) => {
+                  const position = draft.referenceIds.indexOf(reference.id);
+                  const chosen = position >= 0;
+                  const label = referenceLabel(references.indexOf(reference));
+                  return (
+                    <li key={reference.id}>
+                      <label className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={chosen}
+                          onChange={() => toggleReference(reference.id)}
+                        />
+                        <span>
+                          <strong>{reference.organization}</strong>{" "}
+                          <span className="badge">{label}</span>
+                        </span>
+                      </label>
+                      {chosen && (
+                        <span className="order-buttons">
+                          <button
+                            type="button"
+                            className="pill"
+                            onClick={() => moveReference(reference.id, -1)}
+                            disabled={position === 0}
+                            aria-label={`${text.up}: ${reference.organization}`}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="pill"
+                            onClick={() => moveReference(reference.id, 1)}
+                            disabled={position === draft.referenceIds.length - 1}
+                            aria-label={`${text.down}: ${reference.organization}`}
+                          >
+                            ↓
+                          </button>
                         </span>
                       )}
-                      {row.name}
-                      <span className="chip-detail">{years(row.years)}</span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
-          <h3 className="section-title">{text.referencesTitle}</h3>
-          <p className="muted small">{text.referencesHint}</p>
-          {references.length === 0 ? (
-            <p className="muted">{text.noReferences}</p>
-          ) : (
-            <ul className="cv-references">
-              {ordered.map((reference) => {
-                const position = draft.referenceIds.indexOf(reference.id);
-                const chosen = position >= 0;
-                const label = referenceLabel(references.indexOf(reference));
-                return (
-                  <li key={reference.id}>
-                    <label className="checkbox">
-                      <input
-                        type="checkbox"
-                        checked={chosen}
-                        onChange={() => toggleReference(reference.id)}
-                      />
-                      <span>
-                        <strong>{reference.organization}</strong>{" "}
-                        <span className="badge">{label}</span>
-                      </span>
-                    </label>
-                    {chosen && (
-                      <span className="order-buttons">
-                        <button
-                          type="button"
-                          className="pill"
-                          onClick={() => moveReference(reference.id, -1)}
-                          disabled={position === 0}
-                          aria-label={`${text.up}: ${reference.organization}`}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          className="pill"
-                          onClick={() => moveReference(reference.id, 1)}
-                          disabled={position === draft.referenceIds.length - 1}
-                          aria-label={`${text.down}: ${reference.organization}`}
-                        >
-                          ↓
-                        </button>
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CvSection>
           <div className="form-actions">
             <button
               type="button"
@@ -575,6 +797,157 @@ export function ProjectCvPage({
   );
 }
 
+/** Whether a section of the CV editor was left open, remembered per browser. */
+function storedOpen(id: string): boolean {
+  try {
+    return window.localStorage.getItem(`assma.cv.open.${id}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** A collapsible part of the CV editor; the summary shows how much of it is on the CV. */
+function CvSection({
+  id,
+  title,
+  meta,
+  children,
+}: {
+  id: string;
+  title: string;
+  meta: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(() => storedOpen(id));
+  return (
+    <details
+      className="cv-section"
+      open={open}
+      onToggle={(event) => {
+        const next = event.currentTarget.open;
+        setOpen(next);
+        try {
+          window.localStorage.setItem(`assma.cv.open.${id}`, next ? "1" : "0");
+        } catch {
+          // Without storage the section simply starts closed next time.
+        }
+      }}
+    >
+      <summary>
+        <h3 className="section-title">{title}</h3>
+        {meta && <span className="cv-section-meta">{meta}</span>}
+        <span className="cv-section-chevron" aria-hidden="true" />
+      </summary>
+      <div className="cv-section-body">{children}</div>
+    </details>
+  );
+}
+
+/**
+ * One skill or role with its years: a checkbox to show it and, once shown, a slider from one
+ * year to the whole professional experience.
+ */
+function YearRow({
+  name,
+  relevant = false,
+  chosen,
+  canChoose,
+  value,
+  detected,
+  max,
+  years,
+  text,
+  onToggle,
+  onRemove,
+  onYears,
+}: {
+  name: string;
+  relevant?: boolean;
+  chosen: boolean;
+  canChoose: boolean;
+  value: number;
+  /** The computed years, or null for an entry the person added. */
+  detected: number | null;
+  max: number;
+  years: (value: number) => string;
+  text: Preferences["copy"]["cv"];
+  onToggle?: () => void;
+  onRemove?: () => void;
+  onYears: (value: number | null) => void;
+}) {
+  const changed = detected !== null && value !== detected;
+  return (
+    <li className={`year-row ${chosen ? "chosen" : ""}`}>
+      <label className="year-name">
+        {onToggle ? (
+          <input
+            type="checkbox"
+            checked={chosen}
+            disabled={!chosen && !canChoose}
+            onChange={onToggle}
+          />
+        ) : (
+          <span className="year-custom" aria-hidden="true">
+            +
+          </span>
+        )}
+        {relevant && (
+          <span className="relevant" aria-hidden="true">
+            ★
+          </span>
+        )}
+        <span className="year-label" title={name}>
+          {name}
+        </span>
+      </label>
+      {chosen ? (
+        <input
+          type="range"
+          className="year-range"
+          min={FIT_LIMITS.cvMinYears}
+          max={max}
+          step={0.5}
+          value={Math.min(max, Math.max(FIT_LIMITS.cvMinYears, value))}
+          aria-label={text.yearsLabel(name)}
+          aria-valuetext={years(value)}
+          onChange={(event) => onYears(Number(event.target.value))}
+        />
+      ) : (
+        <span />
+      )}
+      <span
+        className={`year-value ${changed ? "changed" : ""}`}
+        title={detected === null ? text.roleCustom : text.yearsDetected(years(detected))}
+      >
+        {years(value)}
+      </span>
+      {onRemove ? (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={onRemove}
+          aria-label={text.roleRemove(name)}
+          title={text.roleRemove(name)}
+        >
+          ×
+        </button>
+      ) : changed && chosen ? (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => onYears(null)}
+          aria-label={`${text.yearsReset}: ${name}`}
+          title={`${text.yearsReset} (${years(detected)})`}
+        >
+          ↺
+        </button>
+      ) : (
+        <span />
+      )}
+    </li>
+  );
+}
+
 /** The framed photo as the PDF draws it, recomputed when photo, frame or theme change. */
 function useFramedPhoto(cv: CvDocument): string | null {
   const [framed, setFramed] = useState<string | null>(null);
@@ -594,6 +967,9 @@ function useFramedPhoto(cv: CvDocument): string | null {
   }, [cv.photo, cv.design.photoShape, frame]);
   return framed;
 }
+
+/** Layouts that show the skill matrix as a two-column grid. */
+const GRID_MATRIX: readonly CvDesign["layout"][] = ["modern", "banner", "minimal", "margin"];
 
 /** The same layouts as the PDF, scaled to the preview column. */
 function CvPreview({ cv }: { cv: CvDocument }) {
@@ -634,7 +1010,7 @@ function CvPreview({ cv }: { cv: CvDocument }) {
   const matrixBars = cv.matrix.length > 0 && (
     <section>
       <h4>{cv.labels.matrix}</h4>
-      <div className={layout === "modern" ? "cv-skill-grid" : undefined}>
+      <div className={GRID_MATRIX.includes(layout) ? "cv-skill-grid" : undefined}>
         {cv.matrix.map((row) => (
           <div key={row.name} className="cv-skill">
             <div>
@@ -790,11 +1166,16 @@ function CvPreview({ cv }: { cv: CvDocument }) {
     </section>
   );
   const image = photo && <img className="cv-photo" src={photo} alt="" />;
+  const contactLine = cv.contact.length > 0 && (
+    <p className="cv-muted cv-contact-line">
+      {cv.contact.map((entry) => entry.value.replace(/\n/g, ", ")).join("  ·  ")}
+    </p>
+  );
 
-  if (layout === "sidebar" || layout === "sidebarRight") {
+  if (layout === "sidebar" || layout === "sidebarRight" || layout === "sidebarSoft") {
     return (
       <article className={`cv-sheet layout-${layout}`} style={style}>
-        <aside className="cv-side cv-panel">
+        <aside className={`cv-side ${layout === "sidebarSoft" ? "cv-soft" : "cv-panel"}`}>
           {image}
           {contact}
           {matrixBars}
@@ -860,6 +1241,75 @@ function CvPreview({ cv }: { cv: CvDocument }) {
           {languages}
           {certificates}
           {hobbies}
+        </div>
+      </article>
+    );
+  }
+  if (layout === "banner") {
+    return (
+      <article className="cv-sheet layout-banner" style={style}>
+        <header className="cv-banner cv-panel">
+          {image}
+          {identity}
+          {contactLine}
+        </header>
+        <div className="cv-main">
+          {summary}
+          {matrixBars}
+          {roles}
+          {projects}
+          {education}
+          {languages}
+          {certificates}
+          {hobbies}
+        </div>
+      </article>
+    );
+  }
+  if (layout === "minimal" || layout === "margin") {
+    return (
+      <article className={`cv-sheet layout-${layout}`} style={style}>
+        <header className="cv-head">
+          <div>
+            {identity}
+            {contactLine}
+          </div>
+          {image}
+        </header>
+        <div className="cv-main">
+          {summary}
+          {matrixBars}
+          {roles}
+          {projects}
+          {education}
+          {languages}
+          {certificates}
+          {hobbies}
+        </div>
+      </article>
+    );
+  }
+  if (layout === "columns") {
+    return (
+      <article className="cv-sheet layout-columns" style={style}>
+        <header className="cv-head photo-left">
+          {image}
+          <div>
+            {identity}
+            {contactLine}
+          </div>
+        </header>
+        <div className="cv-main">{summary}</div>
+        <div className="cv-columns even">
+          <div className="cv-main">{projects}</div>
+          <aside className="cv-aside">
+            {matrixBars}
+            {roles}
+            {education}
+            {languages}
+            {certificates}
+            {hobbies}
+          </aside>
         </div>
       </article>
     );

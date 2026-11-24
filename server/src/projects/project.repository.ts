@@ -44,7 +44,7 @@ function toProject(record: StoredProject): Project {
     draft: Boolean(record.draft),
     // Stored data that no longer matches the contract is treated as absent, not as an error.
     fit: fitSchema.safeParse(record.fit).success ? record.fit : null,
-    cv: cvDraftSchema.safeParse(record.cv).success ? record.cv : null,
+    cv: cvDraftSchema.safeParse(record.cv).data ?? null,
     assessment: readAssessment(record.assessment),
     conditions: projectConditionsSchema.safeParse(record.conditions).success
       ? record.conditions
