@@ -1,7 +1,7 @@
 import {
   ASSESSMENT_LIMITS,
   EDUCATION_LEVELS,
-  hashText,
+  listingFingerprint,
   normaliseConditions,
   REQUIREMENT_CATEGORIES,
   requirementId,
@@ -14,6 +14,8 @@ import {
 } from "@assma/shared";
 import type { InferenceMessage, JsonSchema } from "../platform/inference/provider.js";
 import { fenced } from "./fence.js";
+
+export { listingFingerprint };
 
 /**
  * Step 1 of an assessment: the listing as individually assessable requirements, grouped as
@@ -131,21 +133,6 @@ export function extractionMessages(
       ].join("\n\n"),
     },
   ];
-}
-
-/** Changes when anything the requirements are read from changes. */
-export function listingFingerprint(
-  project: Pick<Project, "brief" | "required" | "preferred" | "tech" | "terms">,
-): string {
-  return hashText(
-    JSON.stringify([
-      project.brief,
-      project.required,
-      project.preferred,
-      project.tech,
-      project.terms,
-    ]),
-  );
 }
 
 /** The dimensions a requirement is assessed in, from its category. */

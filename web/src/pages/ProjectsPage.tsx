@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  assessProject,
+  summariseAssessment,
+  type AssessmentSummary,
   matchesSearch,
   PROJECT_STATUSES,
   toApiError,
@@ -7,7 +10,9 @@ import {
   type ProjectChange,
   type ProjectStatus,
 } from "@assma/shared";
+import { AssessmentCell } from "../components/Assessment";
 import { QuickAdd } from "../components/QuickAdd";
+import { candidateFrom, cvInputOf, useEconomicPreferences, useExperience } from "../lib/assessment";
 import type { Preferences } from "../lib/preferences";
 import { projectsChanged, useProjects } from "../lib/projects";
 import { linkHandler, navigate } from "../lib/router";
@@ -29,6 +34,29 @@ export function ProjectsPage({
   const text = copy.projects;
   const { api, signOut } = session;
   const { projects, failed } = useProjects(api, () => signOut(copy.common.sessionExpired));
+  const experience = useExperience(api, () => signOut(copy.common.sessionExpired));
+  const economic = useEconomicPreferences(api, () => signOut(copy.common.sessionExpired));
+  // The four dimensions per project, computed here like on the project page.
+  const summaries = useMemo(() => {
+    const result = new Map<string, AssessmentSummary>();
+    if (!experience || !economic) {
+      return result;
+    }
+    const candidate = candidateFrom(experience);
+    for (const project of projects ?? []) {
+      if (project.assessment) {
+        const view = assessProject({
+          assessment: project.assessment,
+          candidate,
+          cv: cvInputOf(project),
+          conditions: project.conditions,
+          preferences: economic.economic,
+        });
+        result.set(project.id, summariseAssessment(view, project.assessment.assessedAt));
+      }
+    }
+    return result;
+  }, [projects, experience, economic?.economic]);
   const [archived, setArchived] = useState(false);
   const [filter, setFilter] = useState<ProjectStatus | "all">("all");
   const [query, setQuery] = useState("");
@@ -245,11 +273,11 @@ export function ProjectsPage({
                   <td data-label={text.columnTech}>{project.tech.slice(0, 3).join(" · ")}</td>
                   <td data-label={text.columnDate}>{date.format(new Date(project.createdAt))}</td>
                   <td data-label={text.columnFit}>
-                    {project.fit?.score ? (
-                      <strong className="fit-score">{project.fit.score}/10</strong>
-                    ) : (
-                      <span title={text.fitPending}>–</span>
-                    )}
+                    <AssessmentCell
+                      summary={summaries.get(project.id) ?? null}
+                      legacyScore={project.fit ? project.fit.score : undefined}
+                      copy={copy.assessment}
+                    />
                   </td>
                   <td className="row-actions">
                     <RowMenu

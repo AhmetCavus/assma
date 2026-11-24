@@ -1,19 +1,31 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  FIT_LIMITS,
-  FIT_STATUSES,
-  fitBasis,
-  fitSummary,
-  referenceLabel,
+  assessProject,
+  candidateFingerprint,
+  listingFingerprint,
   requirementsOf,
+  skillMatches,
+  termsOf,
   toApiError,
-  type Experience,
-  type Finding,
+  type ClarifyAction,
   type FitJob,
-  type FitStatus,
   type Project,
+  type Requirement,
 } from "@assma/shared";
+import {
+  ActionSummary,
+  DimensionCards,
+  RequirementList,
+  type RequirementHandlers,
+} from "../components/Assessment";
 import { useApplications } from "../lib/applications";
+import {
+  candidateFrom,
+  cvInputOf,
+  experienceChanged,
+  useEconomicPreferences,
+  useExperience,
+} from "../lib/assessment";
 import { takeAutoAssess } from "../lib/flash";
 import type { Preferences } from "../lib/preferences";
 import { useAssistantPage } from "../lib/assistant";
@@ -33,24 +45,25 @@ export function ProjectFitPage({
 }) {
   const { copy, locale } = preferences;
   const text = copy.fit;
+  const assessmentCopy = copy.assessment;
   const { api, signOut } = session;
+  const expired = () => signOut(copy.common.sessionExpired);
   const [project, setProject] = useState<Project | null>(null);
-  const [experience, setExperience] = useState<Experience | null>(null);
+  const experience = useExperience(api, expired);
+  const economic = useEconomicPreferences(api, expired);
   const [job, setJob] = useState<FitJob | null>(null);
-  const [editing, setEditing] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
 
   function fail(failure: unknown) {
     const apiError = toApiError(failure);
     if (apiError.isUnauthorized) {
-      signOut(copy.common.sessionExpired);
+      expired();
       return;
     }
     const messages: Record<string, string> = {
       too_many_attempts: text.tooMany,
       not_found: text.notFound,
-      reference_required: text.needReference,
     };
     setError(messages[apiError.code] ?? copy.common.error);
   }
@@ -67,24 +80,20 @@ export function ProjectFitPage({
 
   useEffect(() => {
     let active = true;
-    Promise.all([api.project(id), api.experience()])
-      .then(([loadedProject, loadedExperience]) => {
+    api
+      .project(id)
+      .then((loaded) => {
         if (!active) {
           return;
         }
         // A draft has no requirements yet; it is read on the edit page first.
-        if (loadedProject.draft) {
+        if (loaded.draft) {
           navigate(`/projects/${id}/edit`, { replace: true });
           return;
         }
-        setProject(loadedProject);
-        setExperience(loadedExperience);
+        setProject(loaded);
         // A project just captured with "save and check fit" is assessed right away.
-        if (
-          takeAutoAssess(id) &&
-          requirementsOf(loadedProject).length > 0 &&
-          loadedExperience.references.length > 0
-        ) {
+        if (takeAutoAssess(id) && requirementsOf(loaded).length > 0) {
           void startAssessment();
         }
       })
@@ -145,29 +154,110 @@ export function ProjectFitPage({
     setJob(null);
   }
 
-  async function correct(index: number, next: FitStatus, referenceIds: string[]) {
+  // Every dimension is computed here from current data; only a reassessment runs the model.
+  const view = useMemo(
+    () =>
+      project?.assessment && experience && economic
+        ? assessProject({
+            assessment: project.assessment,
+            candidate: candidateFrom(experience),
+            cv: cvInputOf(project),
+            conditions: project.conditions,
+            preferences: economic.economic,
+          })
+        : null,
+    [project, experience, economic?.economic],
+  );
+
+  async function saved(task: () => Promise<unknown>, message: string) {
     setError("");
     try {
-      setProject(await api.changeFinding(id, index, { status: next, referenceIds }));
-      setEditing(null);
-      setStatus(text.saved);
+      await task();
+      setStatus(message);
       projectsChanged();
     } catch (failure) {
       fail(failure);
     }
   }
 
-  // The assistant can run the check again when there is something to compare.
-  const assistantCanAssess =
-    project !== null &&
-    experience !== null &&
-    requirementsOf(project).length > 0 &&
-    experience.references.length > 0;
+  /** Clarify actions change experience data, never the stored assessment. */
+  async function clarify(action: ClarifyAction, requirement: Requirement) {
+    if (!experience) {
+      return;
+    }
+    const terms = termsOf(requirement);
+    const setFact = (status: "complete" | "none") =>
+      api.saveSkillFacts({
+        facts: [
+          ...experience.skillFacts.filter(
+            (fact) => fact.skill.toLowerCase() !== requirement.normalised.toLowerCase(),
+          ),
+          { skill: requirement.normalised, status },
+        ],
+      });
+    switch (action.kind) {
+      case "confirm_usage":
+        await saved(async () => {
+          for (const referenceId of action.referenceIds) {
+            const reference = experience.references.find((entry) => entry.id === referenceId);
+            const skills = (reference?.skills ?? []).filter((skill) =>
+              terms.some((term) => skillMatches(skill, term)),
+            );
+            if (skills.length > 0) {
+              await api.confirmUsage(referenceId, { skills });
+            }
+          }
+          experienceChanged();
+        }, assessmentCopy.usageConfirmed);
+        return;
+      case "confirm_complete":
+        if (window.confirm(assessmentCopy.confirmComplete(action.skill))) {
+          await saved(async () => {
+            await setFact("complete");
+            experienceChanged();
+          }, assessmentCopy.factSaved);
+        }
+        return;
+      case "deny":
+        if (window.confirm(assessmentCopy.confirmDeny(action.skill))) {
+          await saved(async () => {
+            await setFact("none");
+            experienceChanged();
+          }, assessmentCopy.factSaved);
+        }
+        return;
+      default:
+        navigate("/experience");
+    }
+  }
+
+  const handlers: RequirementHandlers = {
+    onAction: clarify,
+    onCorrect: (requirement, correction) =>
+      saved(
+        async () => setProject(await api.setCorrection(id, requirement.id, correction)),
+        assessmentCopy.saved,
+      ),
+    onReset: (requirement) =>
+      saved(
+        async () => setProject(await api.resetCorrections(id, requirement.id)),
+        assessmentCopy.saved,
+      ),
+  };
+
+  async function resetAll() {
+    if (window.confirm(assessmentCopy.confirmResetAll)) {
+      await saved(async () => setProject(await api.resetCorrections(id)), assessmentCopy.saved);
+    }
+  }
+
+  const requirementCount = project ? requirementsOf(project).length : 0;
+  const assistantCanAssess = project !== null && requirementCount > 0;
   useAssistantPage({
     services: assistantCanAssess && !job ? { assess_fit: startAssessment } : {},
   });
 
-  if (!project || !experience) {
+  if (!project || !experience || !economic) {
     return (
       <div className="page wide">
         {error ? (
@@ -181,22 +271,23 @@ export function ProjectFitPage({
     );
   }
 
-  const references = experience.references;
-  const labelOf = (referenceId: string) => {
-    const index = references.findIndex((reference) => reference.id === referenceId);
-    return index < 0 ? null : referenceLabel(index);
-  };
-  const fit = project.fit;
-  const stale = fit !== null && fit.basis !== fitBasis(project, references);
-  const requirements = requirementsOf(project);
-  const canAssess = requirements.length > 0 && references.length > 0;
+  const assessment = project.assessment;
+  const canAssess = requirementCount > 0;
   const subtitle = [project.company, project.agency].filter(Boolean).join(" · ");
   const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
+  const listingChanged =
+    assessment !== null && assessment.fingerprint !== listingFingerprint(project);
+  // Only data the technical judgement read counts; confirmed usage and stated facts are
+  // already reflected in the computed dimensions.
+  const experienceNewer =
+    assessment !== null &&
+    assessment.candidateBasis !== "" &&
+    assessment.candidateBasis !== candidateFingerprint(candidateFrom(experience));
 
-  const assessButton = (label: string) => (
+  const assessButton = (label: string, primary = false) => (
     <button
       type="button"
-      className="pill"
+      className={primary ? "button" : "pill"}
       onClick={() => void startAssessment()}
       disabled={!canAssess || job !== null}
     >
@@ -264,11 +355,24 @@ export function ProjectFitPage({
             </button>
           </div>
         </section>
-      ) : !fit ? (
+      ) : !assessment || !view ? (
         <section className="card">
-          <h2>{text.notAssessed}</h2>
-          <p className="muted">{text.notAssessedLead}</p>
-          {requirements.length === 0 ? (
+          {project.fit ? (
+            <>
+              <h2>{assessmentCopy.legacyTitle}</h2>
+              <p className="score">
+                <strong>{project.fit.score ?? "–"}</strong>
+                <span>{assessmentCopy.outOf}</span>
+              </p>
+              <p className="muted">{assessmentCopy.legacyLead}</p>
+            </>
+          ) : (
+            <>
+              <h2>{text.notAssessed}</h2>
+              <p className="muted">{text.notAssessedLead}</p>
+            </>
+          )}
+          {requirementCount === 0 ? (
             <p>
               {text.noRequirements}{" "}
               <a
@@ -279,239 +383,63 @@ export function ProjectFitPage({
                 {text.edit}
               </a>
             </p>
-          ) : references.length === 0 ? (
-            <p>
-              {text.noReferences}{" "}
-              <a className="link" href="/experience" onClick={linkHandler("/experience")}>
-                {text.toExperience}
-              </a>
-            </p>
           ) : (
-            <button type="button" className="button" onClick={() => void startAssessment()}>
-              {text.assess}
-            </button>
+            assessButton(project.fit ? text.reassess : text.assess, true)
           )}
         </section>
       ) : (
         <>
-          {stale && (
+          {assessment.incomplete && (
             <div className="alert stale" role="status">
-              <span>{text.stale}</span>
+              <span>{assessmentCopy.incomplete}</span>
               {assessButton(text.reassess)}
             </div>
           )}
-          <div className="fit-grid">
-            <section className="card score-card" aria-labelledby="score-title">
-              <h2 id="score-title">{text.scoreTitle}</h2>
-              {fit.score === null ? (
-                <p className="muted">{text.unscored}</p>
-              ) : (
-                <>
-                  <p className="score">
-                    <strong>{fit.score}</strong>
-                    <span>{text.outOf}</span>
-                  </p>
-                  <div className="score-bar" role="img" aria-label={`${fit.score} ${text.outOf}`}>
-                    {Array.from({ length: 10 }, (_, index) => (
-                      <span key={index} className={index < fit.score! ? "filled" : ""} />
-                    ))}
-                  </div>
-                  <p className="muted small">
-                    {text.doubleNote} {text.points(fit.points, fit.maxPoints)}
-                  </p>
-                </>
-              )}
-              <p className="muted small">{text.assessed(date.format(new Date(fit.assessedAt)))}</p>
-              {!stale && assessButton(text.reassess)}
-            </section>
-            <section className="card" aria-labelledby="summary-title">
-              <h2 id="summary-title">{text.summaryTitle}</h2>
-              <h3 className="strengths">{text.strengths}</h3>
-              <p>
-                {fitSummary(fit)
-                  .strengths.map((finding) => finding.requirement)
-                  .join(", ") || text.none}
-              </p>
-              <h3 className="open-points">{text.open}</h3>
-              <p>
-                {fitSummary(fit)
-                  .open.map((finding) => finding.requirement)
-                  .join(", ") || text.none}
-              </p>
-            </section>
-          </div>
+          {(listingChanged || experienceNewer) && !assessment.incomplete && (
+            <div className="alert stale" role="status">
+              <span>
+                {listingChanged ? assessmentCopy.listingChanged : assessmentCopy.experienceChanged}
+              </span>
+              {assessButton(text.reassess)}
+            </div>
+          )}
+          <DimensionCards
+            view={view}
+            projectId={id}
+            preferencesSaved={economic.saved}
+            copy={assessmentCopy}
+          />
+          <ActionSummary view={view} preferencesSaved={economic.saved} copy={assessmentCopy} />
           <section className="card" aria-labelledby="requirements-title">
-            <h2 id="requirements-title">{text.requirementsTitle}</h2>
-            <ul className="finding-list">
-              {fit.findings.map((finding, index) => (
-                <li key={`${index}-${finding.requirement}`} className="finding">
-                  {editing === index ? (
-                    <FindingEditor
-                      finding={finding}
-                      references={references}
-                      preferences={preferences}
-                      onSave={(next, ids) => correct(index, next, ids)}
-                      onCancel={() => setEditing(null)}
-                    />
-                  ) : (
-                    <>
-                      <div className="finding-requirement">
-                        <strong>{finding.requirement}</strong>
-                        <span className="muted small">{text.kind[finding.kind]}</span>
-                      </div>
-                      <div>
-                        <span className={`fit-badge fit-${finding.status}`}>
-                          {text.status[finding.status]}
-                        </span>
-                        {finding.edited && <span className="muted small"> · {text.edited}</span>}
-                      </div>
-                      <div className="finding-evidence">
-                        <span>{finding.note}</span>
-                        {finding.referenceIds.map((referenceId) => {
-                          const label = labelOf(referenceId);
-                          return label ? (
-                            <span key={referenceId} className="badge">
-                              {label}
-                            </span>
-                          ) : (
-                            <span key={referenceId} className="muted small">
-                              ({text.removedReference})
-                            </span>
-                          );
-                        })}
-                      </div>
-                      <button
-                        type="button"
-                        className="icon-button small-button"
-                        onClick={() => setEditing(index)}
-                        aria-label={text.correct(finding.requirement)}
-                        title={text.correct(finding.requirement)}
-                      >
-                        <PencilIcon />
-                      </button>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-            {project.terms && (
-              <p className="muted terms">
-                {text.terms} · {project.terms}
-              </p>
-            )}
+            <div className="card-heading">
+              <h2 id="requirements-title">{assessmentCopy.requirementsTitle}</h2>
+              <span className="muted small">
+                {assessmentCopy.assessedAt(date.format(new Date(assessment.assessedAt)))}
+              </span>
+            </div>
+            <RequirementList
+              assessment={assessment}
+              view={view}
+              experience={experience}
+              copy={assessmentCopy}
+              handlers={handlers}
+            />
+            <div className="form-actions">
+              {!listingChanged &&
+                !experienceNewer &&
+                !assessment.incomplete &&
+                assessButton(text.reassess)}
+              {assessment.corrections.length > 0 && (
+                <button type="button" className="link" onClick={() => void resetAll()}>
+                  {assessmentCopy.resetAll}
+                </button>
+              )}
+            </div>
           </section>
         </>
       )}
       <ProjectApplications projectId={id} session={session} preferences={preferences} />
     </div>
-  );
-}
-
-function FindingEditor({
-  finding,
-  references,
-  preferences,
-  onSave,
-  onCancel,
-}: {
-  finding: Finding;
-  references: Experience["references"];
-  preferences: Preferences;
-  onSave: (status: FitStatus, referenceIds: string[]) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const text = preferences.copy.fit;
-  const [status, setStatus] = useState<FitStatus>(finding.status);
-  const [selected, setSelected] = useState<string[]>(
-    finding.referenceIds.filter((id) => references.some((reference) => reference.id === id)),
-  );
-  const [problem, setProblem] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function submit() {
-    if (status !== "missing" && selected.length === 0) {
-      setProblem(text.needReference);
-      return;
-    }
-    setBusy(true);
-    try {
-      await onSave(status, status === "missing" ? [] : selected);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form
-      className="form compact finding-editor"
-      aria-label={text.correct(finding.requirement)}
-      onSubmit={(event) => {
-        event.preventDefault();
-        void submit();
-      }}
-    >
-      <strong>{finding.requirement}</strong>
-      <fieldset className="chips">
-        <legend className="visually-hidden">{text.statusLabel}</legend>
-        {FIT_STATUSES.map((option) => (
-          <label key={option} className={`chip ${status === option ? "selected" : ""}`}>
-            <input
-              type="radio"
-              className="visually-hidden"
-              name={`status-${finding.requirement}`}
-              checked={status === option}
-              onChange={() => {
-                setStatus(option);
-                setProblem("");
-              }}
-            />
-            {text.status[option]}
-          </label>
-        ))}
-      </fieldset>
-      {status !== "missing" && (
-        <fieldset className="reference-choices">
-          <legend>
-            {text.evidence} <span className="muted small">{text.evidenceHint}</span>
-          </legend>
-          {references.map((reference, index) => {
-            const checked = selected.includes(reference.id);
-            return (
-              <label key={reference.id} className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  disabled={!checked && selected.length >= FIT_LIMITS.referencesPerFinding}
-                  onChange={() => {
-                    setProblem("");
-                    setSelected((current) =>
-                      checked
-                        ? current.filter((id) => id !== reference.id)
-                        : [...current, reference.id],
-                    );
-                  }}
-                />
-                <span className="badge">{referenceLabel(index)}</span>
-                {reference.organization}
-              </label>
-            );
-          })}
-        </fieldset>
-      )}
-      {problem && (
-        <small className="field-error" role="alert">
-          {problem}
-        </small>
-      )}
-      <div className="form-actions">
-        <button className="button" disabled={busy}>
-          {text.save}
-        </button>
-        <button type="button" className="pill" onClick={onCancel} disabled={busy}>
-          {text.cancelEdit}
-        </button>
-      </div>
-    </form>
   );
 }
 

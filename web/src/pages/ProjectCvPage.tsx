@@ -14,7 +14,9 @@ import {
   referenceLabel,
   relevantTo,
   skillRows,
+  evidence,
   toApiError,
+  type EvidenceSuggestion,
   type Experience,
   type Project,
 } from "@assma/shared";
@@ -28,6 +30,8 @@ import {
   framedPhoto,
   type CvDocument,
 } from "../lib/cvDocument";
+import { EvidencePanel } from "../components/Assessment";
+import { candidateFrom } from "../lib/assessment";
 import { EMPTY_DRAFT, initialDraft, type Draft } from "../lib/cvDraft";
 import type { Preferences } from "../lib/preferences";
 import { useAssistantPage } from "../lib/assistant";
@@ -143,6 +147,46 @@ export function ProjectCvPage({
   });
   const setDesign = (change: Partial<CvDesign>) =>
     setDraft((current) => ({ ...current, design: { ...current.design, ...change } }));
+
+  // Evidence follows every change to the draft; nothing runs the model.
+  const liveEvidence = project.assessment
+    ? evidence(project.assessment, candidateFrom(experience), {
+        summary: draft.summary,
+        referenceIds: draft.referenceIds,
+        skills,
+      })
+    : null;
+
+  /** A suggestion only ever selects existing data; the person applies it. */
+  const applySuggestion = (suggestion: EvidenceSuggestion) => {
+    if (suggestion.kind === "select_reference") {
+      setDraft((current) =>
+        current.referenceIds.includes(suggestion.referenceId)
+          ? current
+          : {
+              ...current,
+              referenceIds: [...current.referenceIds, suggestion.referenceId].slice(
+                0,
+                FIT_LIMITS.cvReferences,
+              ),
+            },
+      );
+    } else if (suggestion.kind === "add_skill") {
+      setDraft((current) => {
+        const list = current.skills ?? recommended;
+        return list.includes(suggestion.skill)
+          ? current
+          : { ...current, skills: [...list, suggestion.skill].slice(0, FIT_LIMITS.cvSkills) };
+      });
+    }
+    setStatus("");
+  };
+
+  const writeInSummary = () => {
+    const field = window.document.getElementById("cv-summary");
+    field?.scrollIntoView({ behavior: "smooth", block: "center" });
+    field?.focus();
+  };
 
   const dirty = JSON.stringify(saved) !== JSON.stringify(draft);
   const fileName = cvFileName(document, project.company || project.title);
@@ -375,6 +419,7 @@ export function ProjectCvPage({
             <label>
               {text.summary}
               <textarea
+                id="cv-summary"
                 value={draft.summary}
                 onChange={(event) =>
                   setDraft((current) => ({ ...current, summary: event.target.value }))
@@ -519,6 +564,13 @@ export function ProjectCvPage({
           <CvPreview cv={document} />
         </section>
       </div>
+      <EvidencePanel
+        evidence={liveEvidence}
+        experience={experience}
+        copy={copy.assessment}
+        onApply={applySuggestion}
+        onWrite={writeInSummary}
+      />
     </div>
   );
 }

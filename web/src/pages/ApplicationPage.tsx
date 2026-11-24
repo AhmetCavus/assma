@@ -12,6 +12,7 @@ import { applicationsChanged, isoOf, localDateTime } from "../lib/applications";
 import { cvFileName, cvMarkdown, cvPdf, download } from "../lib/cvDocument";
 import { documentOfSnapshot } from "../lib/cvDraft";
 import { setFlash, takeFlash } from "../lib/flash";
+import { AssessmentCell } from "../components/Assessment";
 import type { Preferences } from "../lib/preferences";
 import { useAssistantPage } from "../lib/assistant";
 import { projectsChanged } from "../lib/projects";
@@ -499,9 +500,33 @@ export function ApplicationPage({
             </div>
           </section>
 
-          {snapshot.fit && (
+          {snapshot.assessment && (
             <section className="card" aria-labelledby="fit-at-title">
               <h2 id="fit-at-title">{text.fitTitle}</h2>
+              <AssessmentCell
+                summary={snapshot.assessment}
+                legacyScore={undefined}
+                copy={copy.assessment}
+              />
+              {snapshot.assessment.formal.blockers.length > 0 && (
+                <p className="small tone-text-bad">
+                  {copy.assessment.blockers(snapshot.assessment.formal.blockers.length)}:{" "}
+                  {snapshot.assessment.formal.blockers.join(", ")}
+                </p>
+              )}
+              {snapshot.assessment.formal.risks.length > 0 && (
+                <p className="small tone-text-warn">
+                  {copy.assessment.risks(snapshot.assessment.formal.risks.length)}:{" "}
+                  {snapshot.assessment.formal.risks.join(", ")}
+                </p>
+              )}
+            </section>
+          )}
+          {!snapshot.assessment && snapshot.fit && (
+            <section className="card" aria-labelledby="fit-at-title">
+              <h2 id="fit-at-title">
+                {text.fitTitle} · {copy.assessment.legacyTitle}
+              </h2>
               {snapshot.fit.score !== null && (
                 <p className="score small-score">
                   <strong>{snapshot.fit.score}</strong>

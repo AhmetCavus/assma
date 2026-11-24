@@ -22,10 +22,10 @@
 
 ## 3. Web
 
-- [ ] 3.1 Fit page: four cards with coverage shown separately, Evidence "not available yet" without a CV, an action summary, grouped requirements with per-dimension chips, details, citations, clarify actions and correction/reset; a legacy fit is labelled as the legacy assessment. Locales in DE/EN. Verify: browser test against the local model (assess, correct, reassess keeps the correction, reset), light/dark, 390 px with no horizontal scroll.
-- [ ] 3.2 CV page: evidence panel with live recalculation and approve-to-apply suggestions. Verify: browser test where adding a suggested reference raises Evidence and leaves the other cards unchanged.
-- [ ] 3.3 Project editor: conditions fieldset with suggested values. Experience: skill-usage control (bulk confirm for the engagement, own period, unknown), skill facts from clarify actions, and the "Konditionen & Präferenzen" section (targets, ranges, exclusions). Verify: browser test that saving preferences updates Economic Fit without an assessment job, and bulk-confirming usage turns an Unverified duration into Fulfilled.
-- [ ] 3.4 Projects list: compact four-dimension cell with blocker, unverified-mandatory and evidence-gap flags, legacy projects labelled "Altbewertung"; application snapshot view with the frozen four-dimension view. Verify: browser test with one legacy and one new project, one old and one new application, light/dark and 390 px.
+- [x] 3.1 Fit page: four cards with coverage shown separately, Evidence "not available yet" without a CV, an action summary, grouped requirements with per-dimension chips, details, citations, clarify actions and correction/reset; a legacy fit is labelled as the legacy assessment. Locales in DE/EN. Verify: browser test against the local model (assess, correct, reassess keeps the correction, reset), light/dark, 390 px with no horizontal scroll.
+- [x] 3.2 CV page: evidence panel with live recalculation and approve-to-apply suggestions. Verify: browser test where adding a suggested reference raises Evidence and leaves the other cards unchanged.
+- [x] 3.3 Project editor: conditions fieldset with suggested values. Experience: skill-usage control (bulk confirm for the engagement, own period, unknown), skill facts from clarify actions, and the "Konditionen & Präferenzen" section (targets, ranges, exclusions). Verify: browser test that saving preferences updates Economic Fit without an assessment job, and bulk-confirming usage turns an Unverified duration into Fulfilled.
+- [x] 3.4 Projects list: compact four-dimension cell with blocker, unverified-mandatory and evidence-gap flags, legacy projects labelled "Altbewertung"; application snapshot view with the frozen four-dimension view. Verify: browser test with one legacy and one new project, one old and one new application, light/dark and 390 px.
 
 ## 4. Integration
 

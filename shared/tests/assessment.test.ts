@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  candidateFingerprint,
   confirmUsage,
   DEFAULT_ECONOMIC_PREFERENCES,
   economicFit,
@@ -92,6 +93,7 @@ function assessmentOf(
   return {
     version: 2,
     fingerprint: "f",
+    candidateBasis: "",
     groups,
     requirements,
     technical: options.technical ?? [],
@@ -862,4 +864,40 @@ test("alternatives without data are not reported once another alternative is doc
     result.items.map((entry) => [entry.requirement.normalised, entry.state]),
     [["GitLab CI", "full"]],
   );
+});
+
+test("of alternatives with a duration, only the best one is reported as a gap", () => {
+  const gitlab = req("GitLab CI", { groupId: "ci", months: 36 });
+  const actions = req("GitHub Actions", { groupId: "ci", months: 36 });
+  const candidate = candidateWith({
+    references: [
+      ref("a", "2020-01", "2021-12", ["GitLab CI"], [{ skill: "GitLab CI", period: "engagement" }]),
+    ],
+  });
+  const fit = formalFit(
+    assessmentOf([gitlab, actions], {
+      groups: [{ id: "ci", operator: "any", mandatory: true, source: "" }],
+    }),
+    candidate,
+  );
+  assert.deepEqual(
+    fit.gaps.map((item) => [item.requirement.normalised, item.duration!.gap]),
+    [["GitLab CI", 12]],
+  );
+  assert.equal(fit.risks.length, 1);
+});
+
+test("the candidate fingerprint ignores confirmed usage and skill facts", () => {
+  const base = candidateWith({ references: [ref("a", "2020-01", null, ["GitLab"])] });
+  const confirmed = candidateWith({
+    references: [
+      { ...base.references[0]!, skillUsage: confirmUsage(base.references[0]!, ["GitLab"]) },
+    ],
+    skillFacts: [{ skill: "GitLab", status: "complete" }],
+  });
+  assert.equal(candidateFingerprint(confirmed), candidateFingerprint(base));
+  const edited = candidateWith({
+    references: [{ ...base.references[0]!, contribution: "New text." }],
+  });
+  assert.notEqual(candidateFingerprint(edited), candidateFingerprint(base));
 });

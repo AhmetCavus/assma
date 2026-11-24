@@ -4,6 +4,8 @@ import {
   FIT_LIMITS,
   skillRows,
   supportingReferences,
+  technicalFit,
+  type StoredAssessment,
   type CvChoice,
   type CvDesign,
   type CvLanguage,
@@ -35,6 +37,27 @@ export const EMPTY_DRAFT: Draft = {
   design: DEFAULT_CV_DESIGN,
 };
 
+/** References the assessment cites for existing competencies, most cited first. */
+function assessedReferences(assessment: StoredAssessment, experience: Experience): string[] {
+  const candidate = {
+    references: experience.references,
+    profile: experience.profile,
+    skillFacts: experience.skillFacts,
+  };
+  const counts = new Map<string, number>();
+  for (const item of technicalFit(assessment, candidate).items) {
+    if (item.state === "gap" || item.state === "unknown") {
+      continue;
+    }
+    for (const cite of item.cites) {
+      if (cite.kind === "reference") {
+        counts.set(cite.key, (counts.get(cite.key) ?? 0) + (item.state === "direct" ? 2 : 1));
+      }
+    }
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+}
+
 /** The saved draft, or a first one: profile summary, references the fit supports, first photo. */
 export function initialDraft(project: Project, experience: Experience): Draft {
   const known = new Set(experience.references.map((reference) => reference.id));
@@ -50,9 +73,13 @@ export function initialDraft(project: Project, experience: Experience): Draft {
       design: project.cv.design,
     };
   }
-  const supporting = project.fit
-    ? supportingReferences(project.fit).filter((id) => known.has(id))
-    : [];
+  const supporting = (
+    project.assessment
+      ? assessedReferences(project.assessment, experience)
+      : project.fit
+        ? supportingReferences(project.fit)
+        : []
+  ).filter((id) => known.has(id));
   return {
     summary: experience.profile.summary,
     referenceIds: (supporting.length > 0

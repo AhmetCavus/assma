@@ -70,6 +70,8 @@ export type FormalEntry = {
   state: FormalState;
   /** The members behind the state: one for AND, all alternatives for OR. */
   items: FormalItem[];
+  /** The member that decides the state; for OR the best alternative. */
+  best: FormalItem;
 };
 
 export type FormalFit = {
@@ -338,10 +340,17 @@ export function formalFit(
     const groupItems = members.map((member) => formalItem(member, assessment, candidate));
     items.push(...groupItems);
     if (group.operator === "any") {
-      const best = [...groupItems].sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state])[0]!;
-      entries.push({ group, state: best.state, items: groupItems });
+      // The best alternative stands for the group: by state, then by the smallest gap.
+      const best = [...groupItems].sort(
+        (a, b) =>
+          STATE_ORDER[a.state] - STATE_ORDER[b.state] ||
+          (a.duration?.gap ?? 0) - (b.duration?.gap ?? 0),
+      )[0]!;
+      entries.push({ group, state: best.state, items: groupItems, best });
     } else {
-      entries.push(...groupItems.map((entry) => ({ group, state: entry.state, items: [entry] })));
+      entries.push(
+        ...groupItems.map((entry) => ({ group, state: entry.state, items: [entry], best: entry })),
+      );
     }
   }
   const counted = entries.filter((entry) => entry.state !== "not_applicable");
@@ -356,7 +365,10 @@ export function formalFit(
     },
     risks: mandatory.filter((entry) => entry.state === "unverified"),
     blockers: mandatory.filter((entry) => entry.state === "not_fulfilled"),
-    gaps: items.filter((entry) => entry.duration !== null && entry.duration.gap > 0),
+    // Of alternatives only the best one counts: the others need not be met.
+    gaps: entries
+      .map((entry) => entry.best)
+      .filter((entry) => entry.duration !== null && entry.duration.gap > 0),
     optional: {
       fulfilled: optional.filter((entry) => entry.state === "fulfilled").length,
       total: optional.length,

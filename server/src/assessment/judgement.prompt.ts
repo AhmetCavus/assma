@@ -51,7 +51,7 @@ state:
 
 cites: the labels of the data that supports the state, such as "E01" (references), "D01" (education), "L01" (languages), "C01" (certificates). Every state except "unknown" needs at least one cite. Never cite a label that is not listed.
 onboarding: for "transferable" and "partial" the estimated effort (minimal, low, moderate, high); otherwise "unknown".
-note: one short sentence in the language of the requirements: what the evidence shows or what is missing.
+note: one short sentence in the language of the requirements, addressed to the freelancer directly (German "du", English "you"): what the evidence shows or what is missing.
 
 Rules:
 - Use only the data given. Never assume experience, skills, qualifications or periods that are not written there.

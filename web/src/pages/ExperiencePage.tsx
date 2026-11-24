@@ -21,6 +21,12 @@ import type { ZodError } from "zod";
 import { takeFlash } from "../lib/flash";
 import { preparePhoto } from "../lib/photo";
 import type { Preferences } from "../lib/preferences";
+import {
+  PreferencesSection,
+  SkillFactsList,
+  SkillUsageChips,
+  UsagePanel,
+} from "../components/ExperienceExtras";
 import { linkHandler } from "../lib/router";
 import type { Session } from "../lib/session";
 
@@ -85,6 +91,7 @@ export function ExperiencePage({
   const { api, signOut } = session;
   const [experience, setExperience] = useState<Experience | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
+  const [usageOpen, setUsageOpen] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState(takeFlash);
 
@@ -115,6 +122,13 @@ export function ExperiencePage({
     void load();
     // `api` is stable for the session.
   }, [api]);
+
+  // Links such as "Set preferences" open the page at their section.
+  useEffect(() => {
+    if (experience && location.hash) {
+      window.document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: "start" });
+    }
+  }, [experience !== null]);
 
   function startEditing(next: Editing) {
     setError("");
@@ -265,17 +279,55 @@ export function ExperiencePage({
                     </p>
                     <p className="reference-body">{reference.contribution}</p>
                     <div className="reference-footer">
-                      <span className="muted">{reference.skills.join(" · ")}</span>
-                      <button
-                        type="button"
-                        className="pill"
-                        onClick={() => startEditing({ kind: "reference", id: reference.id })}
-                        aria-label={`${text.edit}: ${reference.organization}`}
-                      >
-                        <PencilIcon />
-                        {text.edit}
-                      </button>
+                      <SkillUsageChips reference={reference} copy={copy} />
+                      <span className="reference-buttons">
+                        {reference.skills.length > 0 && (
+                          <button
+                            type="button"
+                            className="pill"
+                            aria-expanded={usageOpen === reference.id}
+                            onClick={() =>
+                              setUsageOpen((current) =>
+                                current === reference.id ? null : reference.id,
+                              )
+                            }
+                          >
+                            {text.usage.open}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="pill"
+                          onClick={() => startEditing({ kind: "reference", id: reference.id })}
+                          aria-label={`${text.edit}: ${reference.organization}`}
+                        >
+                          <PencilIcon />
+                          {text.edit}
+                        </button>
+                      </span>
                     </div>
+                    {usageOpen === reference.id && (
+                      <UsagePanel
+                        reference={reference}
+                        api={api}
+                        copy={copy}
+                        onFailure={fail}
+                        onClose={() => setUsageOpen(null)}
+                        onSaved={(updated, message) => {
+                          setUsageOpen(null);
+                          setStatus(message);
+                          setExperience(
+                            (current) =>
+                              current && {
+                                ...current,
+                                references: current.references.map((item) =>
+                                  item.id === updated.id ? updated : item,
+                                ),
+                              },
+                          );
+                        }}
+                      />
+                    )}
                   </li>
                 ),
               )}
@@ -301,6 +353,16 @@ export function ExperiencePage({
                 {text.addReference}
               </button>
             )}
+            <SkillFactsList
+              facts={experience.skillFacts}
+              api={api}
+              copy={copy}
+              onFailure={fail}
+              onChanged={(skillFacts, message) => {
+                setStatus(message);
+                setExperience((current) => current && { ...current, skillFacts });
+              }}
+            />
           </section>
 
           <div className="side-column">
@@ -330,6 +392,17 @@ export function ExperiencePage({
             />
           </div>
         </div>
+      )}
+      {experience && (
+        <PreferencesSection
+          api={api}
+          copy={copy}
+          onFailure={fail}
+          onSaved={(message) => {
+            setError("");
+            setStatus(message);
+          }}
+        />
       )}
     </div>
   );

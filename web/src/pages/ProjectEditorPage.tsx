@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  COMPENSATION_UNITS,
+  CONTRACT_TYPES,
+  TRAVEL_LEVELS,
+  UNKNOWN_CONDITIONS,
+  type CompensationUnit,
+  type ProjectConditions,
   parseLines,
   parseSkills,
   PROJECT_LIMITS,
@@ -80,6 +86,198 @@ function inputOf(draft: Draft): ProjectInput {
   };
 }
 
+/** Suggested conditions fill only what is still unknown. */
+function withConditions(
+  current: ProjectConditions,
+  suggested: ProjectConditions,
+): ProjectConditions {
+  const keep = <T,>(value: T | null, next: T | null) => (value === null ? next : value);
+  return {
+    compensation: keep(current.compensation, suggested.compensation),
+    contract: keep(current.contract, suggested.contract),
+    remote: keep(current.remote, suggested.remote),
+    months: keep(current.months, suggested.months),
+    hoursPerWeek: keep(current.hoursPerWeek, suggested.hoursPerWeek),
+    start: keep(current.start, suggested.start),
+    onsite: current.onsite || suggested.onsite,
+    travel: keep(current.travel, suggested.travel),
+  };
+}
+
+/** Empty fields mean unknown; nothing is filled in on the person's behalf. */
+function ConditionsFields({
+  conditions,
+  onChange,
+  preferences,
+  error,
+}: {
+  conditions: ProjectConditions;
+  onChange: (next: ProjectConditions) => void;
+  preferences: Preferences;
+  error: string;
+}) {
+  const text = preferences.copy.capture.conditions;
+  const contracts = preferences.copy.assessment.contracts;
+  const set = (change: Partial<ProjectConditions>) => onChange({ ...conditions, ...change });
+  const number = (value: string) => (value.trim() === "" ? null : Number(value));
+  const compensation = conditions.compensation;
+  return (
+    <fieldset className="conditions-fields">
+      <legend>{text.title}</legend>
+      {error ? (
+        <small className="field-error" role="alert">
+          {text.invalid}
+        </small>
+      ) : (
+        <small className="muted">{text.hint}</small>
+      )}
+      <div className="form-row">
+        <label>
+          {text.amount}
+          <input
+            type="number"
+            min={0}
+            step="any"
+            inputMode="decimal"
+            value={compensation?.amount ?? ""}
+            onChange={(event) => {
+              const amount = number(event.target.value);
+              set({
+                compensation:
+                  amount && amount > 0
+                    ? {
+                        amount,
+                        unit: compensation?.unit ?? "hour",
+                        currency: compensation?.currency ?? "EUR",
+                      }
+                    : null,
+              });
+            }}
+          />
+        </label>
+        <label>
+          {text.unit}
+          <select
+            className="select-field"
+            value={compensation?.unit ?? "hour"}
+            disabled={!compensation}
+            onChange={(event) =>
+              compensation &&
+              set({
+                compensation: { ...compensation, unit: event.target.value as CompensationUnit },
+              })
+            }
+          >
+            {COMPENSATION_UNITS.map((unit) => (
+              <option key={unit} value={unit}>
+                {text.units[unit]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {text.currency}
+          <input
+            value={compensation?.currency ?? "EUR"}
+            maxLength={3}
+            disabled={!compensation}
+            onChange={(event) =>
+              compensation &&
+              set({ compensation: { ...compensation, currency: event.target.value.toUpperCase() } })
+            }
+          />
+        </label>
+      </div>
+      <div className="form-row">
+        <label>
+          {text.contract}
+          <select
+            className="select-field"
+            value={conditions.contract ?? ""}
+            onChange={(event) =>
+              set({ contract: (event.target.value || null) as ProjectConditions["contract"] })
+            }
+          >
+            <option value="">{text.unknown}</option>
+            {CONTRACT_TYPES.map((contract) => (
+              <option key={contract} value={contract}>
+                {contracts[contract]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {text.remote}
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={conditions.remote ?? ""}
+            onChange={(event) => set({ remote: number(event.target.value) })}
+          />
+        </label>
+      </div>
+      <div className="form-row">
+        <label>
+          {text.months}
+          <input
+            type="number"
+            min={1}
+            max={120}
+            value={conditions.months ?? ""}
+            onChange={(event) => set({ months: number(event.target.value) })}
+          />
+        </label>
+        <label>
+          {text.hours}
+          <input
+            type="number"
+            min={1}
+            max={80}
+            value={conditions.hoursPerWeek ?? ""}
+            onChange={(event) => set({ hoursPerWeek: number(event.target.value) })}
+          />
+        </label>
+      </div>
+      <div className="form-row">
+        <label>
+          {text.start}
+          <input
+            type="date"
+            value={conditions.start ?? ""}
+            onChange={(event) => set({ start: event.target.value || null })}
+          />
+        </label>
+        <label>
+          {text.travel}
+          <select
+            className="select-field"
+            value={conditions.travel ?? ""}
+            onChange={(event) =>
+              set({ travel: (event.target.value || null) as ProjectConditions["travel"] })
+            }
+          >
+            <option value="">{text.unknown}</option>
+            {TRAVEL_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {text.travelLevels[level]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label>
+        {text.onsite}
+        <input
+          value={conditions.onsite}
+          maxLength={PROJECT_LIMITS.terms}
+          onChange={(event) => set({ onsite: event.target.value })}
+        />
+      </label>
+    </fieldset>
+  );
+}
+
 /** Suggestions fill only fields that are still empty, so nothing typed is overwritten. */
 function withSuggestions(draft: Draft, suggestions: ListingSuggestions): Draft {
   const fill = (current: string, value: string) => (current.trim() ? current : value);
@@ -136,6 +334,7 @@ export function ProjectEditorPage({
   const text = copy.capture;
   const { api, signOut } = session;
   const [project, setProject] = useState<Project | null>(null);
+  const [conditions, setConditions] = useState<ProjectConditions>(UNKNOWN_CONDITIONS);
   const [draft, setDraft] = useState<Draft>(() =>
     id !== null ? EMPTY : { ...EMPTY, ...takeSeed() },
   );
@@ -181,6 +380,7 @@ export function ProjectEditorPage({
         if (active) {
           setProject(loaded);
           setDraft(draftOf(loaded));
+          setConditions(loaded.conditions);
         }
       })
       .catch((failure: unknown) => active && fail(failure));
@@ -203,6 +403,7 @@ export function ProjectEditorPage({
         }
         if (next.state === "done" && next.suggestions) {
           setDraft((current) => withSuggestions(current, next.suggestions!));
+          setConditions((current) => withConditions(current, next.suggestions!.conditions));
           setSuggested(true);
           setStatus(text.suggested);
           setJob(null);
@@ -305,7 +506,7 @@ export function ProjectEditorPage({
   }
 
   async function save() {
-    const parsed = projectInputSchema.safeParse(inputOf(draft));
+    const parsed = projectInputSchema.safeParse({ ...inputOf(draft), conditions });
     if (!parsed.success) {
       const messages: Record<string, string> = {
         required: text.required_,
@@ -335,6 +536,7 @@ export function ProjectEditorPage({
         const saved = await api.updateProject(project.id, parsed.data);
         setProject(saved);
         setDraft(draftOf(saved));
+        setConditions(saved.conditions);
         setStatus(text.saved);
         projectsChanged();
       } else {
@@ -578,6 +780,12 @@ export function ProjectEditorPage({
                   maxLength={PROJECT_LIMITS.terms}
                 />
               </Field>
+              <ConditionsFields
+                conditions={conditions}
+                onChange={setConditions}
+                preferences={preferences}
+                error={errors.conditions ? copy.common.error : ""}
+              />
               {project && (
                 <label>
                   {text.status}

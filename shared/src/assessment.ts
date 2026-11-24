@@ -127,6 +127,8 @@ export type StoredAssessment = {
   version: 2;
   /** Fingerprint of the listing the requirements were extracted from. */
   fingerprint: string;
+  /** Fingerprint of the candidate data the technical judgement read; "" when unknown. */
+  candidateBasis: string;
   groups: RequirementGroup[];
   requirements: Requirement[];
   technical: TechnicalResult[];
@@ -144,6 +146,25 @@ export function hashText(text: string): string {
     value = Math.imul(value, 0x01000193);
   }
   return (value >>> 0).toString(16).padStart(8, "0");
+}
+
+/** Changes when anything the requirements are read from changes. */
+export function listingFingerprint(project: {
+  brief: string;
+  required: readonly string[];
+  preferred: readonly string[];
+  tech: readonly string[];
+  terms: string;
+}): string {
+  return hashText(
+    JSON.stringify([
+      project.brief,
+      project.required,
+      project.preferred,
+      project.tech,
+      project.terms,
+    ]),
+  );
 }
 
 /** Stable across reassessments, so corrections find their requirement again. */
@@ -204,6 +225,7 @@ export function readAssessment(raw: unknown): StoredAssessment | null {
   return {
     version: 2,
     fingerprint: typeof data.fingerprint === "string" ? data.fingerprint : "",
+    candidateBasis: typeof data.candidateBasis === "string" ? data.candidateBasis : "",
     groups: groups.filter((group) => usedGroups.has(group.id)),
     requirements,
     technical: arrayOf(data.technical)
@@ -240,6 +262,39 @@ export type Candidate = {
   /** The current month, for ongoing engagements. */
   today?: YearMonth;
 };
+
+/**
+ * Changes when anything the technical judgement reads changes: references, profile text,
+ * education, languages and certificates. Confirmed usage and skill facts are not part of it;
+ * the computed dimensions read those directly.
+ */
+export function candidateFingerprint(candidate: Candidate): string {
+  return hashText(
+    JSON.stringify([
+      [...candidate.references]
+        .sort((a, b) => (a.id < b.id ? -1 : 1))
+        .map((reference) => [
+          reference.id,
+          reference.organization,
+          reference.role,
+          reference.start,
+          reference.end,
+          reference.contribution,
+          reference.skills,
+        ]),
+      candidate.profile.headline,
+      candidate.profile.summary,
+      candidate.profile.education.map((entry) => [
+        entry.degree,
+        entry.institution,
+        entry.end,
+        entry.note,
+      ]),
+      candidate.profile.languages.map((entry) => [entry.name, entry.level]),
+      candidate.profile.certificates.map((entry) => entry.name),
+    ]),
+  );
+}
 
 /** Whether a citation points at data that exists. */
 export function citeExists(cite: Cite, candidate: Candidate): boolean {

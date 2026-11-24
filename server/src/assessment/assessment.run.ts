@@ -1,9 +1,10 @@
-import type {
-  Candidate,
-  Project,
-  ProjectConditions,
-  StoredAssessment,
-  TechnicalResult,
+import {
+  candidateFingerprint,
+  type Candidate,
+  type Project,
+  type ProjectConditions,
+  type StoredAssessment,
+  type TechnicalResult,
 } from "@assma/shared";
 import type { JobProgress } from "../platform/modelJobs.js";
 import {
@@ -87,6 +88,7 @@ export async function runAssessment(input: {
     assessment: {
       version: 2,
       fingerprint,
+      candidateBasis: candidateFingerprint(candidate),
       groups,
       requirements,
       technical,
