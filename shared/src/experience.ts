@@ -154,6 +154,100 @@ export function parseSkills(value: string): string[] {
   return uniqueSkills(value.split(/[,;·\n]/));
 }
 
+/**
+ * How a skill on a reference was used. A skill without an entry is assumed to have been used
+ * for the engagement, which never satisfies a formal duration requirement on its own.
+ * "engagement" confirms the whole engagement; a period confirms only that period; "unknown"
+ * confirms the skill was used without knowing when.
+ */
+export const skillUsagePeriodSchema = z.union([
+  z.literal("engagement"),
+  z.literal("unknown"),
+  z
+    .object({ start: yearMonthSchema, end: yearMonthSchema.nullable() })
+    .refine((period) => period.end === null || period.end >= period.start, "end_before_start"),
+]);
+export type SkillUsagePeriod = z.infer<typeof skillUsagePeriodSchema>;
+
+export const skillUsageSchema = z.object({
+  skill: z.string().trim().min(1).max(EXPERIENCE_LIMITS.skill),
+  period: skillUsagePeriodSchema,
+});
+export type SkillUsage = z.infer<typeof skillUsageSchema>;
+
+/** Keeps one entry per listed skill (the last one wins) and drops skills no longer listed. */
+export function cleanSkillUsage(
+  usage: readonly SkillUsage[],
+  skills: readonly string[],
+): SkillUsage[] {
+  const listed = new Map(skills.map((skill) => [skill.toLowerCase(), skill]));
+  const bySkill = new Map<string, SkillUsage>();
+  for (const entry of usage) {
+    const skill = listed.get(entry.skill.trim().toLowerCase());
+    if (skill) {
+      bySkill.set(skill.toLowerCase(), { skill, period: entry.period });
+    }
+  }
+  return skills
+    .map((skill) => bySkill.get(skill.toLowerCase()))
+    .filter((entry): entry is SkillUsage => Boolean(entry));
+}
+
+/**
+ * Confirms several skills of one reference at once, by default for the whole engagement.
+ * Other skills keep their usage.
+ */
+export function confirmUsage(
+  reference: { skills: readonly string[]; skillUsage: readonly SkillUsage[] },
+  skills: readonly string[],
+  period: SkillUsagePeriod = "engagement",
+): SkillUsage[] {
+  const chosen = new Set(skills.map((skill) => skill.trim().toLowerCase()));
+  const kept = reference.skillUsage.filter((entry) => !chosen.has(entry.skill.toLowerCase()));
+  return cleanSkillUsage(
+    [
+      ...kept,
+      ...reference.skills
+        .filter((skill) => chosen.has(skill.toLowerCase()))
+        .map((skill) => ({ skill, period })),
+    ],
+    reference.skills,
+  );
+}
+
+/** Confirming several skills of one reference in one step. */
+export const usageConfirmationSchema = z.object({
+  skills: z
+    .array(z.string().trim().min(1).max(EXPERIENCE_LIMITS.skill))
+    .min(1)
+    .max(EXPERIENCE_LIMITS.skillsPerReference),
+  period: skillUsagePeriodSchema.default("engagement"),
+});
+export type UsageConfirmation = z.input<typeof usageConfirmationSchema>;
+
+/**
+ * What the person states about a skill across all engagements: "complete" means the
+ * documented experience is all they have, "none" that they have no experience with it.
+ */
+export const SKILL_FACT_STATUSES = ["complete", "none"] as const;
+export const skillFactSchema = z.object({
+  skill: z.string().trim().min(1).max(EXPERIENCE_LIMITS.skill),
+  status: z.enum(SKILL_FACT_STATUSES),
+});
+export type SkillFact = z.infer<typeof skillFactSchema>;
+
+export const skillFactsInputSchema = z.object({
+  facts: z
+    .array(skillFactSchema)
+    .max(200)
+    .transform((facts) => {
+      // One fact per skill, the last one wins.
+      const bySkill = new Map(facts.map((fact) => [fact.skill.toLowerCase(), fact]));
+      return [...bySkill.values()];
+    }),
+});
+export type SkillFactsInput = z.input<typeof skillFactsInputSchema>;
+
 export const referenceInputSchema = z
   .object({
     organization: required(EXPERIENCE_LIMITS.organization),
@@ -168,11 +262,32 @@ export const referenceInputSchema = z
       .default([])
       .transform(uniqueSkills)
       .refine((skills) => skills.length <= EXPERIENCE_LIMITS.skillsPerReference, "too_many"),
+    /** Left out, the stored usage is kept; given, it replaces it. */
+    skillUsage: z
+      .array(skillUsageSchema)
+      .max(EXPERIENCE_LIMITS.skillsPerReference * 2)
+      .optional(),
   })
   .refine((reference) => reference.end === null || reference.end >= reference.start, {
     message: "end_before_start",
     path: ["end"],
-  });
+  })
+  .refine(
+    (reference) =>
+      (reference.skillUsage ?? []).every(
+        (entry) =>
+          typeof entry.period === "string" ||
+          (entry.period.start >= reference.start &&
+            (reference.end === null ||
+              (entry.period.end !== null && entry.period.end <= reference.end))),
+      ),
+    { message: "usage_outside_engagement", path: ["skillUsage"] },
+  )
+  .transform((reference) =>
+    reference.skillUsage === undefined
+      ? reference
+      : { ...reference, skillUsage: cleanSkillUsage(reference.skillUsage, reference.skills) },
+  );
 export type ReferenceInput = z.input<typeof referenceInputSchema>;
 
 export const experienceReferenceSchema = z.object({
@@ -183,6 +298,7 @@ export const experienceReferenceSchema = z.object({
   end: yearMonthSchema.nullable(),
   contribution: z.string(),
   skills: z.array(z.string()),
+  skillUsage: z.array(skillUsageSchema).default([]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -208,6 +324,7 @@ export const experienceSchema = z.object({
   profile: experienceProfileSchema,
   references: z.array(experienceReferenceSchema),
   images: z.array(profileImageSchema),
+  skillFacts: z.array(skillFactSchema).default([]),
 });
 export type Experience = z.infer<typeof experienceSchema>;
 

@@ -37,8 +37,14 @@ export async function getProject(account: Account, id: string) {
   return project;
 }
 
+/** Without conditions in the input, the stored ones stay untouched. */
+function withoutMissingConditions<T extends { conditions?: unknown }>(fields: T) {
+  const { conditions, ...rest } = fields;
+  return conditions === undefined ? rest : { ...rest, conditions };
+}
+
 export async function createProject(account: Account, input: unknown) {
-  const fields = projectInputSchema.parse(input);
+  const fields = withoutMissingConditions(projectInputSchema.parse(input));
   if ((await repository.countProjects(account.id)) >= PROJECT_LIMITS.projects) {
     throw new AssmaError(409, "project_limit");
   }
@@ -81,7 +87,7 @@ export async function addDrafts(account: Account, input: unknown): Promise<Proje
 /** Saving the full form also completes a draft. */
 export async function updateProject(account: Account, id: string, input: unknown) {
   const updated = await repository.updateProject(account.id, id, {
-    ...projectInputSchema.parse(input),
+    ...withoutMissingConditions(projectInputSchema.parse(input)),
     draft: false,
   });
   if (!updated) {

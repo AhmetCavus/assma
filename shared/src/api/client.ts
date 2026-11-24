@@ -12,8 +12,11 @@ import {
   type ProfileImageUpload,
   experienceReferenceSchema,
   experienceSchema,
+  skillFactSchema,
   type ProfileInput,
   type ReferenceInput,
+  type SkillFactsInput,
+  type UsageConfirmation,
 } from "../experience.js";
 import {
   cvImportAppliedSchema,
@@ -30,10 +33,14 @@ import {
   type ListingFetchRequest,
   type ListingSuggestRequest,
   type ProjectChange,
+  type ProjectConditionsInput,
   type ProjectDraftRequest,
   type ProjectInput,
 } from "../projects.js";
 import { fitJobSchema, type CvDraftInput, type FindingChange } from "../fit.js";
+import type { CorrectionInput } from "../assessment.js";
+import type { AssessmentView } from "../assessmentView.js";
+import { storedPreferencesSchema, type EconomicPreferencesInput } from "../preferences.js";
 import {
   applicationFileContentSchema,
   applicationSchema,
@@ -132,6 +139,65 @@ export class AssmaApi {
 
   project(id: string) {
     return this.call("get", `/projects/${id}`, projectSchema);
+  }
+
+  // The multi-dimensional assessment. The dimensions are computed by the shared rules; the
+  // server returns the same view the browser can compute from project, experience and
+  // preferences.
+
+  assessmentView(projectId: string) {
+    return this.call(
+      "get",
+      `/projects/${projectId}/assessment`,
+      z.custom<AssessmentView | null>((value) => value === null || typeof value === "object"),
+    );
+  }
+
+  setCorrection(
+    projectId: string,
+    requirementId: string,
+    correction: Omit<CorrectionInput, "requirementId">,
+  ) {
+    return this.call(
+      "put",
+      `/projects/${projectId}/assessment/corrections/${requirementId}`,
+      projectSchema,
+      correction,
+    );
+  }
+
+  /** One correction, or all of them when no requirement is given. */
+  resetCorrections(projectId: string, requirementId?: string) {
+    return this.call(
+      "delete",
+      `/projects/${projectId}/assessment/corrections${requirementId ? `/${requirementId}` : ""}`,
+      projectSchema,
+    );
+  }
+
+  updateConditions(projectId: string, conditions: ProjectConditionsInput) {
+    return this.call("put", `/projects/${projectId}/conditions`, projectSchema, conditions);
+  }
+
+  preferences() {
+    return this.call("get", "/preferences", storedPreferencesSchema);
+  }
+
+  saveEconomicPreferences(input: EconomicPreferencesInput) {
+    return this.call("put", "/preferences/economic", storedPreferencesSchema, input);
+  }
+
+  confirmUsage(referenceId: string, input: UsageConfirmation) {
+    return this.call(
+      "put",
+      `/experience/references/${referenceId}/usage`,
+      experienceReferenceSchema,
+      input,
+    );
+  }
+
+  saveSkillFacts(input: SkillFactsInput) {
+    return this.call("put", "/experience/skill-facts", z.array(skillFactSchema), input);
   }
 
   createProject(input: ProjectInput) {

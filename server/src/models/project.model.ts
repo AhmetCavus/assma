@@ -19,6 +19,10 @@ export type ProjectRecord = {
   archived: boolean;
   draft: boolean;
   fit: unknown;
+  /** The multi-dimensional assessment (version 2); the legacy `fit` stays for history. */
+  assessment: unknown;
+  /** Structured working conditions; missing on older records. */
+  conditions: unknown;
   cv: unknown;
   createdAt: Date;
   updatedAt: Date;
@@ -41,6 +45,8 @@ export default createCollection<ProjectRecord>("AssmaProject").withSchema({
   archived: { ...Provider.Boolean, default: false },
   draft: { ...Provider.Boolean, default: false },
   fit: { ...Provider.Mixed, default: null },
+  assessment: { ...Provider.Mixed, default: null },
+  conditions: { ...Provider.Mixed, default: null },
   cv: { ...Provider.Mixed, default: null },
   createdAt: { ...Provider.Date, required: true },
   updatedAt: { ...Provider.Date, required: true },

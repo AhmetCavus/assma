@@ -14,10 +14,12 @@ export type MatrixRow = {
   lastYear: number;
 };
 
-type Period = { start: number; end: number };
+/** Months since year 0, both ends included. */
+export type MonthPeriod = { start: number; end: number };
+type Period = MonthPeriod;
 
 /** Months since year 0, so periods compare and subtract simply. */
-function monthIndex(value: YearMonth): number {
+export function monthIndex(value: YearMonth): number {
   return Number(value.slice(0, 4)) * 12 + Number(value.slice(5, 7)) - 1;
 }
 

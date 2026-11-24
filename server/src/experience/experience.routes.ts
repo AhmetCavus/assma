@@ -29,6 +29,20 @@ experienceRoutes.put(
     service.updateReference(accountOf(response), identifier.parse(request.params.id), request.body),
   ),
 );
+experienceRoutes.put(
+  "/references/:id/usage",
+  endpoint((request, response) =>
+    service.confirmReferenceUsage(
+      accountOf(response),
+      identifier.parse(request.params.id),
+      request.body,
+    ),
+  ),
+);
+experienceRoutes.put(
+  "/skill-facts",
+  endpoint((request, response) => service.saveSkillFacts(accountOf(response), request.body)),
+);
 experienceRoutes.delete(
   "/references/:id",
   endpoint((request, response) =>

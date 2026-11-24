@@ -2,6 +2,7 @@ import { z } from "zod";
 import { identifier } from "./account.js";
 import { uniqueSkills } from "./experience.js";
 import { cvDraftSchema, fitSchema } from "./fit.js";
+import { storedAssessmentSchema } from "./assessment.js";
 
 /**
  * Contracts for the project register: listings the freelancer captured, from a link, pasted
@@ -76,8 +77,106 @@ export const projectInputSchema = z.object({
   preferred: list(PROJECT_LIMITS.requirements),
   /** Location, remote share, duration and similar working terms. */
   terms: text(PROJECT_LIMITS.terms).default(""),
+  /** Left out, the stored conditions are kept. */
+  conditions: z.lazy(() => projectConditionsSchema).optional(),
 });
 export type ProjectInput = z.input<typeof projectInputSchema>;
+
+// ---------------------------------------------------------------------------------------
+// Working conditions, structured for Economic Fit. Null means the listing does not say.
+
+export const CONTRACT_TYPES = ["freelance", "employment", "temporary"] as const;
+export type ContractType = (typeof CONTRACT_TYPES)[number];
+
+export const COMPENSATION_UNITS = ["hour", "day", "month", "year"] as const;
+export type CompensationUnit = (typeof COMPENSATION_UNITS)[number];
+
+/** Ordered from none to most. */
+export const TRAVEL_LEVELS = ["none", "occasional", "frequent"] as const;
+export type TravelLevel = (typeof TRAVEL_LEVELS)[number];
+
+export const projectConditionsSchema = z.object({
+  compensation: z
+    .object({
+      amount: z.number().positive().max(10_000_000),
+      unit: z.enum(COMPENSATION_UNITS),
+      currency: z
+        .string()
+        .trim()
+        .regex(/^[A-Z]{3}$/, "invalid_currency")
+        .default("EUR"),
+    })
+    .nullable()
+    .default(null),
+  contract: z.enum(CONTRACT_TYPES).nullable().default(null),
+  /** Share of remote work in percent. */
+  remote: z.number().int().min(0).max(100).nullable().default(null),
+  months: z.number().int().min(1).max(120).nullable().default(null),
+  hoursPerWeek: z.number().min(1).max(80).nullable().default(null),
+  /** "YYYY-MM-DD", or null when not stated or "asap". */
+  start: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "invalid_date")
+    .nullable()
+    .default(null),
+  onsite: z.string().trim().max(PROJECT_LIMITS.terms).default(""),
+  travel: z.enum(TRAVEL_LEVELS).nullable().default(null),
+});
+export type ProjectConditions = z.infer<typeof projectConditionsSchema>;
+export type ProjectConditionsInput = z.input<typeof projectConditionsSchema>;
+
+export const UNKNOWN_CONDITIONS: ProjectConditions = projectConditionsSchema.parse({});
+
+/** Whether nothing about the conditions is known yet. */
+export function conditionsUnknown(conditions: ProjectConditions): boolean {
+  return JSON.stringify(conditions) === JSON.stringify(UNKNOWN_CONDITIONS);
+}
+
+/**
+ * Reads conditions the model suggested. It writes 0, -1 or "" for "not stated"; anything
+ * implausible is treated as not stated too, so nothing unknown is ever made up.
+ */
+export function normaliseConditions(raw: unknown): ProjectConditions {
+  const data = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const field = <T>(schema: z.ZodType<T>, value: unknown, fallback: T): T => {
+    const parsed = schema.safeParse(value);
+    return parsed.success ? parsed.data : fallback;
+  };
+  const positive = (value: unknown) =>
+    typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+  const amount = positive(data.amount);
+  const unit = field(z.enum(COMPENSATION_UNITS).nullable(), data.unit, null);
+  const currency = typeof data.currency === "string" ? data.currency.trim().toUpperCase() : "";
+  const remote =
+    typeof data.remote === "number" && data.remote >= 0 && data.remote <= 100
+      ? Math.round(data.remote)
+      : null;
+  const months = positive(data.months);
+  const hours = positive(data.hoursPerWeek ?? data.hours);
+  return {
+    compensation:
+      amount !== null && amount <= 10_000_000 && unit
+        ? { amount, unit, currency: /^[A-Z]{3}$/.test(currency) ? currency : "EUR" }
+        : null,
+    contract: field(z.enum(CONTRACT_TYPES).nullable(), data.contract, null),
+    remote,
+    months: months !== null && months <= 120 ? Math.round(months) : null,
+    hoursPerWeek: hours !== null && hours <= 80 ? hours : null,
+    start: field(
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .refine((value) => !Number.isNaN(Date.parse(value))),
+      data.start,
+      null as string | null,
+    ),
+    onsite:
+      typeof data.onsite === "string"
+        ? data.onsite.replace(/\s+/g, " ").trim().slice(0, PROJECT_LIMITS.terms)
+        : "",
+    travel: field(z.enum(TRAVEL_LEVELS).nullable(), data.travel, null),
+  };
+}
 
 export const projectChangeSchema = z
   .object({ status: projectStatusSchema, archived: z.boolean() })
@@ -98,6 +197,10 @@ export const projectSchema = z.object({
   required: z.array(z.string()),
   preferred: z.array(z.string()),
   terms: z.string(),
+  /** Structured working conditions; every field unknown until suggested or entered. */
+  conditions: projectConditionsSchema.default({}),
+  /** The multi-dimensional assessment, or null before the first one. */
+  assessment: storedAssessmentSchema.default(null),
   status: projectStatusSchema,
   archived: z.boolean(),
   /** Saved with only its link via "quick add"; read and filled in later. */
@@ -267,6 +370,7 @@ export const listingSuggestionsSchema = z.object({
   required: z.array(z.string()),
   preferred: z.array(z.string()),
   terms: z.string(),
+  conditions: projectConditionsSchema,
 });
 export type ListingSuggestions = z.infer<typeof listingSuggestionsSchema>;
 
@@ -300,5 +404,6 @@ export function normaliseListing(raw: unknown): ListingSuggestions {
     required: cleanList(strings(data.required), PROJECT_LIMITS.requirements, PROJECT_LIMITS.item),
     preferred: cleanList(strings(data.preferred), PROJECT_LIMITS.requirements, PROJECT_LIMITS.item),
     terms: clip(data.terms, PROJECT_LIMITS.terms),
+    conditions: normaliseConditions(data.conditions),
   };
 }

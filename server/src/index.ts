@@ -32,6 +32,7 @@ const { experienceRoutes } = await import("./experience/experience.routes.js");
 const { projectRoutes } = await import("./projects/project.routes.js");
 const { assistantRoutes } = await import("./assistant/assistant.routes.js");
 const { applicationRoutes } = await import("./applications/application.routes.js");
+const { preferenceRoutes } = await import("./preferences/preferences.routes.js");
 const { APP_VERSION } = await import("./platform/version.js");
 
 const app = new Yappio({
@@ -75,6 +76,7 @@ app.use((server) => {
   api.use("/projects", projectRoutes);
   api.use("/applications", applicationRoutes);
   api.use("/assistant", assistantRoutes);
+  api.use("/preferences", preferenceRoutes);
   api.use("/admin", requireAccount(true), adminRoutes);
   server.use("/api/assma", api);
 });

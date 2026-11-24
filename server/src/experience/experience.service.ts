@@ -1,5 +1,9 @@
 import {
+  cleanSkillUsage,
+  confirmUsage,
   EXPERIENCE_LIMITS,
+  skillFactsInputSchema,
+  usageConfirmationSchema,
   profileImageUploadSchema,
   profileInputSchema,
   referenceInputSchema,
@@ -31,12 +35,13 @@ async function profileOrDraft(account: Account) {
 }
 
 export async function experience(account: Account): Promise<Experience> {
-  const [profile, references, images] = await Promise.all([
+  const [profile, references, images, skillFacts] = await Promise.all([
     profileOrDraft(account),
     repository.listReferences(account.id),
     repository.listImages(account.id),
+    repository.listSkillFacts(account.id),
   ]);
-  return { profile, references: sortReferences(references), images };
+  return { profile, references: sortReferences(references), images, skillFacts };
 }
 
 export async function saveProfile(account: Account, input: unknown) {
@@ -51,16 +56,65 @@ export async function createReference(account: Account, input: unknown) {
   return repository.createReference(account.id, reference);
 }
 
+/**
+ * Saving a reference keeps its confirmed skill usage when the form leaves it out. Usage of
+ * skills that were removed, or periods that no longer fit changed dates, is dropped: the
+ * person confirmed something else than what is now recorded.
+ */
 export async function updateReference(account: Account, id: string, input: unknown) {
-  const updated = await repository.updateReference(
-    account.id,
-    id,
-    referenceInputSchema.parse(input),
+  const fields = referenceInputSchema.parse(input);
+  const current = await repository.findReference(account.id, id);
+  if (!current) {
+    throw notFound();
+  }
+  const usage = cleanSkillUsage(fields.skillUsage ?? current.skillUsage, fields.skills).filter(
+    (entry) =>
+      typeof entry.period === "string" ||
+      (entry.period.start >= fields.start &&
+        (fields.end === null || (entry.period.end !== null && entry.period.end <= fields.end))),
   );
+  const updated = await repository.updateReference(account.id, id, {
+    ...fields,
+    skillUsage: usage,
+  });
   if (!updated) {
     throw notFound();
   }
   return updated;
+}
+
+/** Confirms how several skills of one reference were used, by default for the whole engagement. */
+export async function confirmReferenceUsage(account: Account, id: string, input: unknown) {
+  const { skills, period } = usageConfirmationSchema.parse(input);
+  const current = await repository.findReference(account.id, id);
+  if (!current) {
+    throw notFound();
+  }
+  if (
+    typeof period !== "string" &&
+    (period.start < current.start ||
+      (current.end !== null && (period.end === null || period.end > current.end)))
+  ) {
+    throw new AssmaError(400, "usage_outside_engagement");
+  }
+  const updated = await repository.updateReference(account.id, id, {
+    organization: current.organization,
+    role: current.role,
+    start: current.start,
+    end: current.end,
+    contribution: current.contribution,
+    skills: current.skills,
+    skillUsage: confirmUsage(current, skills, period),
+  });
+  if (!updated) {
+    throw notFound();
+  }
+  return updated;
+}
+
+/** Replaces the statements about skills: complete experience, or none at all. */
+export async function saveSkillFacts(account: Account, input: unknown) {
+  return repository.saveSkillFacts(account.id, skillFactsInputSchema.parse(input).facts);
 }
 
 export async function deleteReference(account: Account, id: string) {

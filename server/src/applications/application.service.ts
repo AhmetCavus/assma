@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
+  assessProject,
+  summariseAssessment,
   APPLICATION_LIMITS,
   applicationChangeSchema,
   applicationInputSchema,
@@ -12,7 +14,9 @@ import {
   type Project,
   type Snapshot,
 } from "@assma/shared";
+import { candidateOf } from "../assessment/assessment.service.js";
 import * as experience from "../experience/experience.repository.js";
+import * as preferences from "../preferences/preferences.repository.js";
 import type { Account } from "../platform/access.js";
 import { AssmaError, notFound } from "../platform/errors.js";
 import { RateLimiter } from "../platform/rateLimit.js";
@@ -78,6 +82,29 @@ function safeFileName(name: string): string {
  * Records a sent email or a portal submission. The listing, fit, profile, references and CV
  * choices are read from the stored data and frozen; the PDF is kept exactly as it was sent.
  */
+/** The four dimensions frozen with a submission, evidenced against the CV that was sent. */
+async function assessmentAtSubmission(
+  account: Account,
+  project: Project,
+  cv: { summary: string; referenceIds: string[]; skills: string[] },
+) {
+  if (!project.assessment) {
+    return null;
+  }
+  const [candidate, stored] = await Promise.all([
+    candidateOf(account.id),
+    preferences.findPreferences(account.id),
+  ]);
+  const view = assessProject({
+    assessment: project.assessment,
+    candidate,
+    cv,
+    conditions: project.conditions,
+    preferences: stored.economic,
+  });
+  return summariseAssessment(view, project.assessment.assessedAt);
+}
+
 export async function createApplication(account: Account, input: unknown): Promise<Application> {
   const parsed = applicationInputSchema.parse(input);
   const project = await projects.findProject(account.id, parsed.projectId);
@@ -136,6 +163,7 @@ export async function createApplication(account: Account, input: unknown): Promi
       terms: project.terms,
     },
     fit: project.fit,
+    assessment: await assessmentAtSubmission(account, project, parsed.cv),
     profile: profile ?? { ...profileInputSchema.parse({}), updatedAt: null },
     references: selected.filter((reference) => reference !== undefined),
     allReferences: references,

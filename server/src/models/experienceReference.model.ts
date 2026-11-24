@@ -11,6 +11,8 @@ export type ExperienceReferenceRecord = {
   end: string | null;
   contribution: string;
   skills: string[];
+  /** How each listed skill was used; see the shared contract. Missing on older records. */
+  skillUsage: unknown[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -23,6 +25,7 @@ export default createCollection<ExperienceReferenceRecord>("AssmaExperienceRefer
   end: { ...Provider.String, default: null },
   contribution: { ...Provider.String, required: true },
   skills: Provider.Mixed,
+  skillUsage: { ...Provider.Mixed, default: [] },
   createdAt: { ...Provider.Date, required: true },
   updatedAt: { ...Provider.Date, required: true },
 });

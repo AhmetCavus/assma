@@ -1,11 +1,28 @@
-import { cvDraftSchema, fitSchema, projectSchema, type Project } from "@assma/shared";
+import {
+  cvDraftSchema,
+  fitSchema,
+  projectConditionsSchema,
+  projectSchema,
+  readAssessment,
+  UNKNOWN_CONDITIONS,
+  type Project,
+} from "@assma/shared";
 import ProjectModel, { type ProjectRecord } from "../models/project.model.js";
 
 type StoredProject = ProjectRecord & { _id: unknown };
 type ProjectFields = Omit<
   ProjectRecord,
-  "ownerId" | "status" | "archived" | "draft" | "fit" | "cv" | "createdAt" | "updatedAt"
->;
+  | "ownerId"
+  | "status"
+  | "archived"
+  | "draft"
+  | "fit"
+  | "assessment"
+  | "conditions"
+  | "cv"
+  | "createdAt"
+  | "updatedAt"
+> & { conditions?: unknown };
 
 function toProject(record: StoredProject): Project {
   const list = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
@@ -28,6 +45,10 @@ function toProject(record: StoredProject): Project {
     // Stored data that no longer matches the contract is treated as absent, not as an error.
     fit: fitSchema.safeParse(record.fit).success ? record.fit : null,
     cv: cvDraftSchema.safeParse(record.cv).success ? record.cv : null,
+    assessment: readAssessment(record.assessment),
+    conditions: projectConditionsSchema.safeParse(record.conditions).success
+      ? record.conditions
+      : UNKNOWN_CONDITIONS,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   });

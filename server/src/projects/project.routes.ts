@@ -3,6 +3,7 @@ import { z } from "zod";
 import { identifier } from "@assma/shared";
 import { accountOf } from "../platform/access.js";
 import { endpoint } from "../platform/endpoint.js";
+import * as assessment from "../assessment/assessment.service.js";
 import * as fit from "./fit.service.js";
 import * as service from "./project.service.js";
 
@@ -47,17 +48,18 @@ projectRoutes.delete(
   ),
 );
 
-// Experience fit and the tailored CV of one project.
+// The assessment and the tailored CV of one project. The "fit" paths start and follow a
+// (re)assessment; the dimensions themselves are computed on request.
 projectRoutes.post(
   "/:id/fit",
   endpoint((request, response) =>
-    fit.startAssessment(accountOf(response), identifier.parse(request.params.id)),
+    assessment.startAssessment(accountOf(response), identifier.parse(request.params.id)),
   ),
 );
 projectRoutes.get(
   "/:id/fit/:jobId",
   endpoint((request, response) =>
-    fit.assessment(
+    assessment.assessmentJob(
       accountOf(response),
       identifier.parse(request.params.id),
       jobId.parse(request.params.jobId),
@@ -67,10 +69,53 @@ projectRoutes.get(
 projectRoutes.delete(
   "/:id/fit/:jobId",
   endpoint((request, response) =>
-    fit.cancelAssessment(
+    assessment.cancelAssessment(
       accountOf(response),
       identifier.parse(request.params.id),
       jobId.parse(request.params.jobId),
+    ),
+  ),
+);
+projectRoutes.get(
+  "/:id/assessment",
+  endpoint((request, response) =>
+    assessment.view(accountOf(response), identifier.parse(request.params.id)),
+  ),
+);
+projectRoutes.put(
+  "/:id/assessment/corrections/:requirementId",
+  endpoint((request, response) =>
+    assessment.setCorrection(
+      accountOf(response),
+      identifier.parse(request.params.id),
+      assessment.requirementIdSchema.parse(request.params.requirementId),
+      request.body,
+    ),
+  ),
+);
+projectRoutes.delete(
+  "/:id/assessment/corrections/:requirementId",
+  endpoint((request, response) =>
+    assessment.resetCorrections(
+      accountOf(response),
+      identifier.parse(request.params.id),
+      assessment.requirementIdSchema.parse(request.params.requirementId),
+    ),
+  ),
+);
+projectRoutes.delete(
+  "/:id/assessment/corrections",
+  endpoint((request, response) =>
+    assessment.resetCorrections(accountOf(response), identifier.parse(request.params.id), null),
+  ),
+);
+projectRoutes.put(
+  "/:id/conditions",
+  endpoint((request, response) =>
+    assessment.updateConditions(
+      accountOf(response),
+      identifier.parse(request.params.id),
+      request.body,
     ),
   ),
 );

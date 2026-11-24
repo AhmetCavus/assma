@@ -2,11 +2,15 @@ import {
   experienceProfileSchema,
   experienceReferenceSchema,
   profileImageSchema,
+  skillFactSchema,
+  skillUsageSchema,
+  type SkillFact,
   type ExperienceProfile,
   type ProfileImage,
   type ExperienceReference,
 } from "@assma/shared";
 import ProfileModel, { type ExperienceProfileRecord } from "../models/experienceProfile.model.js";
+import SkillFactsModel, { type SkillFactsRecord } from "../models/skillFacts.model.js";
 import { bytesOf } from "../platform/bytes.js";
 import ImageModel, { type ProfileImageRecord } from "../models/profileImage.model.js";
 import ReferenceModel, {
@@ -15,7 +19,21 @@ import ReferenceModel, {
 
 type StoredReference = ExperienceReferenceRecord & { _id: unknown };
 type ProfileFields = Omit<ExperienceProfileRecord, "ownerId" | "updatedAt">;
-type ReferenceFields = Omit<ExperienceReferenceRecord, "ownerId" | "createdAt" | "updatedAt">;
+type ReferenceFields = Omit<
+  ExperienceReferenceRecord,
+  "ownerId" | "createdAt" | "updatedAt" | "skillUsage"
+> & { skillUsage?: unknown[] };
+
+/** Stored entries that no longer match the contract are dropped, not reported as errors. */
+function validEntries<T>(
+  value: unknown,
+  schema: { safeParse(input: unknown): { success: boolean; data?: T } },
+): T[] {
+  return (Array.isArray(value) ? value : []).flatMap((entry) => {
+    const parsed = schema.safeParse(entry);
+    return parsed.success ? [parsed.data as T] : [];
+  });
+}
 
 function toProfile(record: ExperienceProfileRecord): ExperienceProfile {
   return experienceProfileSchema.parse({
@@ -44,9 +62,36 @@ function toReference(record: StoredReference): ExperienceReference {
     end: record.end ?? null,
     contribution: record.contribution,
     skills: Array.isArray(record.skills) ? record.skills : [],
+    skillUsage: validEntries(record.skillUsage, skillUsageSchema),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   });
+}
+
+export async function findReference(
+  ownerId: string,
+  id: string,
+): Promise<ExperienceReference | null> {
+  const record = await ReferenceModel.model
+    .findOne({ _id: id, ownerId })
+    .lean<StoredReference | null>();
+  return record ? toReference(record) : null;
+}
+
+export async function listSkillFacts(ownerId: string): Promise<SkillFact[]> {
+  const record = await SkillFactsModel.model.findOne({ ownerId }).lean<SkillFactsRecord | null>();
+  return validEntries(record?.facts, skillFactSchema);
+}
+
+export async function saveSkillFacts(ownerId: string, facts: SkillFact[]): Promise<SkillFact[]> {
+  const record = await SkillFactsModel.model
+    .findOneAndUpdate(
+      { ownerId },
+      { ownerId, facts, updatedAt: new Date() },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
+    )
+    .lean<SkillFactsRecord>();
+  return validEntries(record.facts, skillFactSchema);
 }
 
 export async function findProfile(ownerId: string): Promise<ExperienceProfile | null> {

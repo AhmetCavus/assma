@@ -1,30 +1,20 @@
 import {
   cvDraftSchema,
   findingChangeSchema,
-  fitBasis,
-  normaliseFindings,
-  referenceLabel,
-  requirementsOf,
   scoreFindings,
-  sortReferences,
   type Fit,
-  type FitJob,
   type Project,
 } from "@assma/shared";
 import * as experience from "../experience/experience.repository.js";
 import type { Account } from "../platform/access.js";
 import { AssmaError, notFound } from "../platform/errors.js";
-import { modelJobs, type JobView } from "../platform/modelJobs.js";
-import { inference } from "../platform/inference/provider.js";
-import { RateLimiter } from "../platform/rateLimit.js";
-import { FIT_SCHEMA, fitMessages } from "./fit.prompt.js";
 import * as repository from "./project.repository.js";
 
-const assessmentsPerAccount = new RateLimiter(60, 60 * 60 * 1000);
-const ASSESSMENT_TIMEOUT_MS = 10 * 60 * 1000;
-
-/** One job kind per project, so assessing a second project does not cancel the first. */
-const kindOf = (projectId: string) => `fit:${projectId}`;
+/**
+ * The legacy single-score fit (corrections of its findings, until the page switches to the
+ * multi-dimensional assessment) and saving the tailored CV. Assessments run in
+ * ../assessment/assessment.service.ts.
+ */
 
 async function owned(account: Account, id: string): Promise<Project> {
   const project = await repository.findProject(account.id, id);
@@ -32,83 +22,6 @@ async function owned(account: Account, id: string): Promise<Project> {
     throw notFound();
   }
   return project;
-}
-
-/**
- * Asks the model which reference supports which requirement, computes the score and saves
- * the assessment on the project, so it is kept even if nobody waits for the result.
- */
-export async function assess(
-  ownerId: string,
-  projectId: string,
-  signal: AbortSignal,
-): Promise<Fit> {
-  const project = await repository.findProject(ownerId, projectId);
-  if (!project) {
-    throw new Error("unreadable");
-  }
-  const references = sortReferences(await experience.listReferences(ownerId));
-  const requirements = requirementsOf(project);
-  let raw: unknown = { findings: [] };
-  if (requirements.length > 0 && references.length > 0) {
-    const messages = fitMessages(requirements, references);
-    let output = "";
-    for await (const delta of inference().streamStructured(
-      { messages, schema: FIT_SCHEMA },
-      AbortSignal.any([signal, AbortSignal.timeout(ASSESSMENT_TIMEOUT_MS)]),
-    )) {
-      output += delta;
-    }
-    try {
-      raw = JSON.parse(output);
-    } catch {
-      throw new Error("unreadable");
-    }
-  }
-  const labels = new Map(
-    references.map((reference, index) => [referenceLabel(index), reference.id]),
-  );
-  const findings = normaliseFindings(raw, requirements, labels);
-  const fit: Fit = {
-    findings,
-    ...scoreFindings(findings),
-    basis: fitBasis(project, references),
-    assessedAt: new Date().toISOString(),
-  };
-  // The project may have been deleted while the model was reading.
-  await repository.updateProject(ownerId, projectId, { fit });
-  return fit;
-}
-
-function toFitJob(view: JobView<Fit>): FitJob {
-  return {
-    id: view.id,
-    state: view.state,
-    position: view.position,
-    startedAt: view.startedAt,
-    error: view.error,
-  };
-}
-
-export async function startAssessment(account: Account, projectId: string) {
-  // A draft has no requirements yet; it is read first.
-  if ((await owned(account, projectId)).draft) {
-    throw new AssmaError(409, "project_draft");
-  }
-  assessmentsPerAccount.attempt(account.id);
-  return toFitJob(
-    modelJobs.start(account.id, kindOf(projectId), (signal) =>
-      assess(account.id, projectId, signal),
-    ),
-  );
-}
-
-export async function assessment(account: Account, projectId: string, jobId: string) {
-  return toFitJob(modelJobs.get<Fit>(account.id, kindOf(projectId), jobId));
-}
-
-export async function cancelAssessment(account: Account, projectId: string, jobId: string) {
-  return modelJobs.cancel(account.id, kindOf(projectId), jobId);
 }
 
 /** The person corrects one finding; the score is recomputed from all findings. */

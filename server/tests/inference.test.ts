@@ -478,6 +478,7 @@ test("vllm: reuses the OpenAI transport with the local server's own fields", asy
         end: null,
         contribution: "Kotlin.",
         skills: ["Kotlin"],
+        skillUsage: [],
         createdAt: new Date(0).toISOString(),
         updatedAt: new Date(0).toISOString(),
       },

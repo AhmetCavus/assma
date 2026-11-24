@@ -1,4 +1,5 @@
 import {
+  type AssessmentView,
   formatPeriod,
   periodOf,
   progressOf,
@@ -13,6 +14,7 @@ import {
   type Project,
 } from "@assma/shared";
 import * as applications from "../applications/application.repository.js";
+import { viewOf } from "../assessment/assessment.service.js";
 import { listApplications } from "../applications/application.service.js";
 import * as experience from "../experience/experience.repository.js";
 import type { Account } from "../platform/access.js";
@@ -112,7 +114,43 @@ function referenceLines(references: ExperienceReference[], detailed: boolean): s
     .join("\n");
 }
 
-function projectLines(project: Project): string {
+const percent = (value: number | null) => (value === null ? "-" : `${Math.round(value * 100)} %`);
+
+/** The four dimensions in a few lines; the assistant explains, it does not recompute. */
+export function assessmentLines(view: AssessmentView): string {
+  const { technical, formal, evidence, economic } = view;
+  const names = (items: { requirement: { normalised: string } }[]) =>
+    items.map((item) => item.requirement.normalised).join(", ");
+  return [
+    `Technical fit: ${technical.score ?? "not assessable"} of 10 (coverage ${percent(technical.coverage)}).`,
+    technical.items.some((item) => item.state === "transferable") &&
+      `Transferable: ${names(technical.items.filter((item) => item.state === "transferable"))}.`,
+    technical.items.some((item) => item.state === "gap") &&
+      `Skill gaps: ${names(technical.items.filter((item) => item.state === "gap"))}.`,
+    `Formal fit: ${formal.mandatory.fulfilled} of ${formal.mandatory.total} mandatory requirements fulfilled.`,
+    formal.blockers.length > 0 &&
+      `Blockers: ${formal.blockers.map((entry) => names(entry.items)).join("; ")}.`,
+    formal.risks.length > 0 &&
+      `Unverified mandatory (possible risks, data missing): ${formal.risks.map((entry) => names(entry.items)).join("; ")}.`,
+    ...formal.gaps.map(
+      (item) =>
+        `Duration ${item.requirement.normalised}: ${item.duration!.required} months required, ${item.duration!.confirmed} confirmed.`,
+    ),
+    evidence.available
+      ? `Evidence in the CV: ${evidence.score ?? "-"} of 10, ${evidence.gaps} documentation gaps.`
+      : "Evidence: no CV for this project yet.",
+    evidence.missingProfileData.length > 0 &&
+      `Not in the profile data: ${names(evidence.missingProfileData)}.`,
+    `Economic fit: ${economic.score ?? "not assessable"} of 10 (coverage ${percent(economic.coverage)}).`,
+    economic.exclusions.length > 0 &&
+      `Exclusion criteria hit: ${economic.exclusions.map((entry) => entry.kind).join(", ")}.`,
+    economic.openQuestions.length > 0 && `Open questions: ${economic.openQuestions.join(", ")}.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function projectLines(project: Project, view: AssessmentView | null): string {
   const fit = project.fit;
   const findings = fit?.findings ?? [];
   if (project.draft) {
@@ -133,11 +171,13 @@ function projectLines(project: Project): string {
     project.required.length > 0 && `Required: ${project.required.join("; ")}`,
     project.preferred.length > 0 && `Preferred: ${project.preferred.join("; ")}`,
     `Status: ${project.status}${project.archived ? " (archived)" : ""}`,
-    fit
-      ? `Fit score: ${fit.score ?? "none"} of 10. ${findings
-          .map((finding) => `${finding.requirement}: ${finding.status}`)
-          .join("; ")}`
-      : "Fit: not checked yet.",
+    view
+      ? assessmentLines(view)
+      : fit
+        ? `Legacy assessment (one score, before the four dimensions; reassess for details): ${fit.score ?? "none"} of 10. ${findings
+            .map((finding) => `${finding.requirement}: ${finding.status}`)
+            .join("; ")}`
+        : "Not assessed yet.",
     `Tailored CV saved: ${project.cv ? "yes" : "no"}`,
   ]
     .filter(Boolean)
@@ -204,7 +244,10 @@ export async function buildContext(
   }
   if (project) {
     // Listing facts come from a third party; the prompt treats them as data only.
-    sections.push({ tag: "project", text: projectLines(project) });
+    const view = project.assessment
+      ? await viewOf(account.id, { ...project, assessment: project.assessment }).catch(() => null)
+      : null;
+    sections.push({ tag: "project", text: projectLines(project, view) });
     known.push(project.contactEmail);
   }
   if (["project", "cv", "experience", "import"].includes(view.page) || !project) {

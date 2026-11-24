@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { identifier } from "./account.js";
 import { CV_LANGUAGES, cvDesignSchema } from "./cvDesign.js";
+import { assessmentSummarySchema } from "./assessmentView.js";
 import { experienceProfileSchema, experienceReferenceSchema } from "./experience.js";
 import { cvDraftSchema, fitSchema } from "./fit.js";
 import { projectStatusSchema, type ProjectStatus } from "./projects.js";
@@ -110,7 +111,10 @@ export const snapshotSchema = z.object({
     preferred: z.array(z.string()),
     terms: z.string(),
   }),
+  /** The legacy single-score fit, as frozen by submissions before the four dimensions. */
   fit: fitSchema.nullable(),
+  /** The four dimensions at submission, against the CV that was sent; null before them. */
+  assessment: assessmentSummarySchema.nullable().default(null),
   profile: experienceProfileSchema,
   /** The references on the CV, in CV order. */
   references: z.array(experienceReferenceSchema),
