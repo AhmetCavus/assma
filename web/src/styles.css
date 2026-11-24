@@ -2509,6 +2509,72 @@ h2 {
 }
 
 /* Skill and role years */
+/* Saved CV configurations */
+.saved-cvs {
+  margin: 4px 0 6px;
+  padding: 12px 14px 4px;
+  border-radius: 14px;
+  background: var(--raised);
+}
+
+.saved-cvs .section-title {
+  margin-top: 0;
+}
+
+.saved-cvs-choose {
+  display: block;
+  margin: 8px 0 0;
+}
+
+.saved-cvs-choose select {
+  width: 100%;
+}
+
+.saved-cvs-changed {
+  margin: 6px 0 0;
+}
+
+.saved-cvs-actions,
+.saved-cvs-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.saved-cvs-form label {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.saved-cvs-form input {
+  width: 100%;
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--input);
+  color: var(--ink);
+}
+
+.saved-cvs-form input[aria-invalid] {
+  border-color: var(--danger);
+}
+
+.saved-cvs .pill.danger {
+  color: var(--danger);
+}
+
+.saved-cvs .field-error {
+  margin: 6px 0 0;
+  color: var(--danger);
+}
+
+.saved-cvs p[aria-live]:empty {
+  display: none;
+}
+
 /* The CV page uses the full content width; the editor sections fold away. */
 .page.wide.cv-page {
   max-width: 1840px;

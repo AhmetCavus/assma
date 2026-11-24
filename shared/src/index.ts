@@ -13,6 +13,7 @@ export * from "./technical.js";
 export * from "./formal.js";
 export * from "./evidence.js";
 export * from "./preferences.js";
+export * from "./savedCvs.js";
 export * from "./economic.js";
 export * from "./assessmentView.js";
 export * from "./eml.js";

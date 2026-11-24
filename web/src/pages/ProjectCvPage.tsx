@@ -37,6 +37,7 @@ import {
   type CvDocument,
 } from "../lib/cvDocument";
 import { EvidencePanel } from "../components/Assessment";
+import { SavedCvs } from "../components/SavedCvs";
 import { candidateFrom } from "../lib/assessment";
 import { EMPTY_DRAFT, initialDraft, type Draft } from "../lib/cvDraft";
 import type { Preferences } from "../lib/preferences";
@@ -380,6 +381,18 @@ export function ProjectCvPage({
       <div className="cv-grid">
         <section className="card" aria-labelledby="cv-content-title">
           <h2 id="cv-content-title">{text.contentTitle}</h2>
+
+          <SavedCvs
+            api={api}
+            experience={experience}
+            draft={draft}
+            text={text}
+            onLoad={(loaded) => {
+              setDraft(loaded);
+              setStatus("");
+            }}
+            onError={fail}
+          />
 
           <h3 className="section-title">{text.designTitle}</h3>
           <div className="design-grid">

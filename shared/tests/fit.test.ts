@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   cvDraftSchema,
+  SAVED_CV_LIMITS,
+  savedCvInputSchema,
   fitBasis,
   fitSummary,
   normaliseFindings,
@@ -127,4 +129,19 @@ test("a CV draft keeps years in half-year steps and each role once", () => {
   assert.equal(cvDraftSchema.safeParse({ skillYears: { Kotlin: 7.3 } }).success, false);
   assert.equal(cvDraftSchema.safeParse({ skillYears: { Kotlin: 0 } }).success, false);
   assert.equal(cvDraftSchema.safeParse({ roles: [{ name: "", years: 2 }] }).success, false);
+});
+
+test("a saved CV needs a name and keeps the full configuration", () => {
+  const saved = savedCvInputSchema.parse({
+    name: "  Android senior ",
+    cv: { summary: "Hi", roles: [{ name: "Tech Lead", years: 3 }] },
+  });
+  assert.equal(saved.name, "Android senior");
+  assert.deepEqual(saved.cv.roles, [{ name: "Tech Lead", years: 3 }]);
+  assert.equal(saved.cv.design.layout, "sidebar");
+  assert.equal(savedCvInputSchema.safeParse({ name: " ", cv: {} }).success, false);
+  assert.equal(
+    savedCvInputSchema.safeParse({ name: "x".repeat(SAVED_CV_LIMITS.name + 1), cv: {} }).success,
+    false,
+  );
 });

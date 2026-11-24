@@ -7,6 +7,7 @@ import {
   technicalFit,
   type StoredAssessment,
   type CvChoice,
+  type CvDraft,
   type CvRole,
   type CvDesign,
   type CvLanguage,
@@ -65,22 +66,49 @@ function assessedReferences(assessment: StoredAssessment, experience: Experience
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
 }
 
+/**
+ * A stored CV configuration as a draft; references and photos deleted since are left out.
+ */
+export function draftOf(cv: CvDraft, experience: Experience): Draft {
+  const known = new Set(experience.references.map((reference) => reference.id));
+  const photos = new Set(experience.images.map((image) => image.id));
+  return {
+    summary: cv.summary,
+    referenceIds: cv.referenceIds.filter((id) => known.has(id)),
+    imageId: cv.imageId && photos.has(cv.imageId) ? cv.imageId : null,
+    skills: cv.skills,
+    skillYears: cv.skillYears,
+    roles: cv.roles,
+    language: cv.language,
+    design: cv.design,
+  };
+}
+
+/** Whether two drafts produce the same CV, whatever order their keys were stored in. */
+export function sameDraft(a: Draft, b: Draft): boolean {
+  const comparable = (draft: Draft) =>
+    JSON.stringify([
+      draft.summary.trim(),
+      draft.referenceIds,
+      draft.imageId,
+      draft.skills,
+      Object.entries(draft.skillYears).sort(([x], [y]) => x.localeCompare(y)),
+      draft.roles,
+      draft.language,
+      draft.design.theme,
+      draft.design.layout,
+      draft.design.photoShape,
+    ]);
+  return comparable(a) === comparable(b);
+}
+
 /** The saved draft, or a first one: profile summary, references the fit supports, first photo. */
 export function initialDraft(project: Project, experience: Experience): Draft {
   const known = new Set(experience.references.map((reference) => reference.id));
   const photos = new Set(experience.images.map((image) => image.id));
   const firstPhoto = experience.images[0]?.id ?? null;
   if (project.cv) {
-    return {
-      summary: project.cv.summary,
-      referenceIds: project.cv.referenceIds.filter((id) => known.has(id)),
-      imageId: project.cv.imageId && photos.has(project.cv.imageId) ? project.cv.imageId : null,
-      skills: project.cv.skills,
-      skillYears: project.cv.skillYears,
-      roles: project.cv.roles,
-      language: project.cv.language,
-      design: project.cv.design,
-    };
+    return draftOf(project.cv, experience);
   }
   const supporting = (
     project.assessment

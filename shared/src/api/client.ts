@@ -41,6 +41,7 @@ import { fitJobSchema, type CvDraftInput, type FindingChange } from "../fit.js";
 import type { CorrectionInput } from "../assessment.js";
 import type { AssessmentView } from "../assessmentView.js";
 import { storedPreferencesSchema, type EconomicPreferencesInput } from "../preferences.js";
+import { savedCvSchema, type SavedCvInput } from "../savedCvs.js";
 import {
   applicationFileContentSchema,
   applicationSchema,
@@ -185,6 +186,22 @@ export class AssmaApi {
 
   saveEconomicPreferences(input: EconomicPreferencesInput) {
     return this.call("put", "/preferences/economic", storedPreferencesSchema, input);
+  }
+
+  savedCvs() {
+    return this.call("get", "/cvs", z.array(savedCvSchema));
+  }
+
+  createSavedCv(input: SavedCvInput) {
+    return this.call("post", "/cvs", savedCvSchema, input);
+  }
+
+  updateSavedCv(id: string, input: SavedCvInput) {
+    return this.call("put", `/cvs/${id}`, savedCvSchema, input);
+  }
+
+  deleteSavedCv(id: string) {
+    return this.call("delete", `/cvs/${id}`, z.object({ id: z.string() }));
   }
 
   confirmUsage(referenceId: string, input: UsageConfirmation) {
