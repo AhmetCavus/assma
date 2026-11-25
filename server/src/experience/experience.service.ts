@@ -53,7 +53,7 @@ export async function createReference(account: Account, input: unknown) {
   if ((await repository.countReferences(account.id)) >= EXPERIENCE_LIMITS.references) {
     throw new AssmaError(409, "reference_limit");
   }
-  return repository.createReference(account.id, reference);
+  return repository.createReference(account.id, { ...reference, links: reference.links ?? [] });
 }
 
 /**
@@ -75,6 +75,7 @@ export async function updateReference(account: Account, id: string, input: unkno
   );
   const updated = await repository.updateReference(account.id, id, {
     ...fields,
+    links: fields.links ?? current.links,
     skillUsage: usage,
   });
   if (!updated) {
@@ -104,6 +105,7 @@ export async function confirmReferenceUsage(account: Account, id: string, input:
     end: current.end,
     contribution: current.contribution,
     skills: current.skills,
+    links: current.links,
     skillUsage: confirmUsage(current, skills, period),
   });
   if (!updated) {

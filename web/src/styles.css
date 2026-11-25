@@ -5824,3 +5824,86 @@ kbd {
     height: 36px;
   }
 }
+
+/* Project links of a reference */
+.link-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 32px;
+  gap: 8px;
+  align-items: center;
+  color: var(--secondary);
+}
+
+.link-row input {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--input);
+  color: var(--ink);
+  min-width: 0;
+  width: 100%;
+}
+
+.link-row input[aria-invalid="true"] {
+  border-color: var(--destructive);
+}
+
+.reference-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.reference-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--secondary-tint);
+  color: var(--secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-links span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reference-links a:hover {
+  text-decoration: underline;
+}
+
+/* Project links in the CV preview, as in the PDF: one line each, spaced apart. */
+.cv-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px 10px;
+  margin-top: 2px !important;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.cv-links a {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--cv-accent);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-links a:hover {
+  text-decoration: underline;
+}

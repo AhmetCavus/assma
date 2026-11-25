@@ -33,6 +33,8 @@ export const EXPERIENCE_LIMITS = {
   contribution: 1500,
   skill: 40,
   skillsPerReference: 20,
+  link: 500,
+  linksPerReference: 10,
   references: 100,
 } as const;
 
@@ -101,6 +103,29 @@ const website = z.union([
     .transform((value) => (/^https?:\/\//i.test(value) ? value : `https://${value}`))
     .pipe(z.string().url("invalid_url")),
 ]);
+
+/** A project link: the address is completed with https:// when no scheme was typed. */
+export const referenceLinkSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(EXPERIENCE_LIMITS.link, "too_long")
+  .transform((value) => (/^https?:\/\//i.test(value) ? value : `https://${value}`))
+  // Checked by pattern too: browsers' URL parsers differ (Chromium accepts spaces in hosts).
+  .pipe(
+    z
+      .string()
+      .regex(/^https?:\/\/[^\s/?#@]+\.[^\s/?#@]+(?:[/?#]\S*)?$/i, "invalid_url")
+      .url("invalid_url"),
+  );
+
+/** Empty entries are dropped and repeated links kept once. */
+const referenceLinksSchema = z
+  .array(z.string().max(EXPERIENCE_LIMITS.link * 2))
+  .max(EXPERIENCE_LIMITS.linksPerReference * 2)
+  .transform((links) => links.map((link) => link.trim()).filter(Boolean))
+  .pipe(z.array(referenceLinkSchema).max(EXPERIENCE_LIMITS.linksPerReference, "too_many"))
+  .transform((links) => [...new Set(links)]);
 
 export const profileInputSchema = z.object({
   name: text(EXPERIENCE_LIMITS.name).default(""),
@@ -262,6 +287,9 @@ export const referenceInputSchema = z
       .default([])
       .transform(uniqueSkills)
       .refine((skills) => skills.length <= EXPERIENCE_LIMITS.skillsPerReference, "too_many"),
+    /** Links to the project (product, store page, repository, case study). Left out, the stored
+        links are kept; given, they replace them. */
+    links: referenceLinksSchema.optional(),
     /** Left out, the stored usage is kept; given, it replaces it. */
     skillUsage: z
       .array(skillUsageSchema)
@@ -298,6 +326,7 @@ export const experienceReferenceSchema = z.object({
   end: yearMonthSchema.nullable(),
   contribution: z.string(),
   skills: z.array(z.string()),
+  links: z.array(z.string()).default([]),
   skillUsage: z.array(skillUsageSchema).default([]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

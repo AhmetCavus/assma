@@ -21,8 +21,8 @@ type StoredReference = ExperienceReferenceRecord & { _id: unknown };
 type ProfileFields = Omit<ExperienceProfileRecord, "ownerId" | "updatedAt">;
 type ReferenceFields = Omit<
   ExperienceReferenceRecord,
-  "ownerId" | "createdAt" | "updatedAt" | "skillUsage"
-> & { skillUsage?: unknown[] };
+  "ownerId" | "createdAt" | "updatedAt" | "skillUsage" | "links"
+> & { skillUsage?: unknown[]; links?: string[] };
 
 /** Stored entries that no longer match the contract are dropped, not reported as errors. */
 function validEntries<T>(
@@ -62,6 +62,12 @@ function toReference(record: StoredReference): ExperienceReference {
     end: record.end ?? null,
     contribution: record.contribution,
     skills: Array.isArray(record.skills) ? record.skills : [],
+    links: Array.isArray(record.links)
+      ? // Only web addresses are rendered as links.
+        record.links.filter(
+          (link): link is string => typeof link === "string" && /^https?:\/\//i.test(link),
+        )
+      : [],
     skillUsage: validEntries(record.skillUsage, skillUsageSchema),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),

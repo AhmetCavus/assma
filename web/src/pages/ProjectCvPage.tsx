@@ -1104,6 +1104,15 @@ function CvPreview({ cv }: { cv: CvDocument }) {
             </div>
             <p className="cv-entry-role">{reference.role}</p>
             <p className="cv-text">{reference.contribution}</p>
+            {reference.links.length > 0 && (
+              <p className="cv-links">
+                {reference.links.map((link) => (
+                  <a key={link.url} href={link.url} target="_blank" rel="noreferrer noopener">
+                    {link.label}
+                  </a>
+                ))}
+              </p>
+            )}
             {reference.skills.length > 0 && (
               <p className="cv-tags">
                 {reference.skills.map((skill) => (

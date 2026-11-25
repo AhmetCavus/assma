@@ -47,6 +47,10 @@ test("an ongoing reference has no end, and an end may not precede the start", ()
 });
 
 test("at most 20 distinct skills are accepted", () => {
+  for (const link of ["https://not a link", "localhost", "https://user@evil.example"]) {
+    assert.equal(referenceInputSchema.safeParse({ ...reference, links: [link] }).success, false, link);
+  }
+
   const many = Array.from({ length: 21 }, (_, index) => `Skill ${index}`);
   assert.equal(referenceInputSchema.safeParse({ ...reference, skills: many }).success, false);
   assert.equal(
@@ -118,4 +122,44 @@ test("stored references are validated before they leave the API", () => {
   };
   assert.equal(experienceReferenceSchema.safeParse(stored).success, true);
   assert.equal(experienceReferenceSchema.safeParse({ ...stored, id: "x" }).success, false);
+});
+
+test("project links are completed with https, empty ones dropped and repeats kept once", () => {
+  const parsed = referenceInputSchema.parse({
+    ...reference,
+    links: [" juniper.health/app ", "", "https://juniper.health/app", "http://example.com/case"],
+  });
+  assert.deepEqual(parsed.links, ["https://juniper.health/app", "http://example.com/case"]);
+});
+
+test("project links are optional, so an update without them keeps the stored ones", () => {
+  assert.equal(referenceInputSchema.parse(reference).links, undefined);
+  assert.deepEqual(referenceInputSchema.parse({ ...reference, links: [] }).links, []);
+});
+
+test("a project link must be a web address, and a reference takes at most ten", () => {
+  const invalid = referenceInputSchema.safeParse({ ...reference, links: ["not a link"] });
+  assert.equal(invalid.success, false);
+  assert.equal(invalid.error!.issues[0]!.path[0], "links");
+  assert.equal(invalid.error!.issues[0]!.message, "invalid_url");
+
+  const many = Array.from({ length: 11 }, (_, index) => `https://example.com/${index}`);
+  const tooMany = referenceInputSchema.safeParse({ ...reference, links: many });
+  assert.equal(tooMany.success, false);
+  assert.equal(tooMany.error!.issues[0]!.message, "too_many");
+});
+
+test("a stored reference without links reads as an empty list", () => {
+  const stored = experienceReferenceSchema.parse({
+    id: "6b05a056317bdb697f51a66f",
+    organization: "Juniper Health",
+    role: "Mobile Engineer",
+    start: "2023-01",
+    end: null,
+    contribution: "Check-in.",
+    skills: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  assert.deepEqual(stored.links, []);
 });

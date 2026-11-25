@@ -40,6 +40,8 @@ export type CvDocument = {
     period: string;
     contribution: string;
     skills: string[];
+    /** Project links: the address, and a short label without scheme and "www.". */
+    links: { url: string; label: string }[];
   }[];
   education: { degree: string; institution: string; period: string; note: string }[];
   languages: { name: string; level: string; dots: number }[];
@@ -73,6 +75,11 @@ const DOTS: Record<LanguageLevel, number> = {
   A2: 1,
   A1: 1,
 };
+
+/** A link without its scheme, "www." and trailing slash, short enough for a CV line. */
+export function linkLabel(url: string): string {
+  return url.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
+}
 
 export function cvDocument(options: {
   profile: ExperienceProfile;
@@ -137,6 +144,7 @@ export function cvDocument(options: {
       period: formatPeriod(reference.start, reference.end, language, copy.experience.today),
       contribution: reference.contribution,
       skills: reference.skills,
+      links: (reference.links ?? []).map((url) => ({ url, label: linkLabel(url) })),
     })),
     education: sortEducation(profile.education).map((entry) => ({
       degree: entry.degree,
@@ -238,6 +246,12 @@ export function cvMarkdown(cv: CvDocument): string {
         "",
         md(reference.contribution),
       );
+      if (reference.links.length > 0) {
+        lines.push(
+          "",
+          reference.links.map((link) => `[${md(link.label)}](<${link.url}>)`).join(" · "),
+        );
+      }
       if (reference.skills.length > 0) {
         lines.push("", reference.skills.map((skill) => `\`${skill.replace(/`/g, "")}\``).join(" "));
       }
@@ -394,7 +408,7 @@ const MARGIN = 40;
  * further pages independently; page numbers are added once the page count is known.
  */
 export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
-  const [{ PDFDocument, rgb }, fontkit, regularUrl, semiboldUrl, boldUrl] = await Promise.all([
+  const [{ PDFDocument, PDFName, PDFString, rgb }, fontkit, regularUrl, semiboldUrl, boldUrl] = await Promise.all([
     import("pdf-lib"),
     import("@pdf-lib/fontkit"),
     import("inter-font/ttf/Inter-Regular.ttf?url"),
@@ -426,6 +440,32 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
     pdf.embedFont(await bytes(boldUrl.default), options),
   ]);
   type Font = typeof regular;
+
+  /** Makes a rectangle of a page open `url` when clicked. */
+  const linkArea = (
+    target: ReturnType<typeof pdf.addPage>,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    url: string,
+  ) => {
+    const annotation = pdf.context.register(
+      pdf.context.obj({
+        Type: "Annot",
+        Subtype: "Link",
+        Rect: [x, y, x + width, y + height],
+        Border: [0, 0, 0],
+        A: { Type: "Action", S: "URI", URI: PDFString.of(url) },
+      }),
+    );
+    const existing = target.node.Annots();
+    if (existing) {
+      existing.push(annotation);
+    } else {
+      target.node.set(PDFName.of("Annots"), pdf.context.obj([annotation]));
+    }
+  };
 
   /** Characters the font has no glyph for (emoji, rare symbols) are dropped, not shown as boxes. */
   const glyphs = new Set(regular.getCharacterSet());
@@ -897,6 +937,41 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
       }
       flow.text(reference.role, { font: semibold, size: 9.4, color: P.sub, indent, gap: 2 });
       flow.text(reference.contribution, { size: 9.5, indent, leading: 1.48, gap: 3, color: P.ink });
+      if (reference.links.length > 0) {
+        // One row of clickable links, wrapping like the skill tags.
+        const size = 8.2;
+        const spacing = 12;
+        const lineHeight = size * 1.5;
+        let x = flow.x + indent;
+        flow.ensure(lineHeight);
+        flow.y -= lineHeight;
+        reference.links.forEach((link, index) => {
+          let label = clean(link.label);
+          const room = flow.width - indent;
+          while (label.length > 8 && semibold.widthOfTextAtSize(label, size) > room) {
+            label = `${label.slice(0, -2)}…`;
+          }
+          const width = semibold.widthOfTextAtSize(label, size);
+          if (index > 0 && x + spacing + width > flow.x + flow.width) {
+            x = flow.x + indent;
+            flow.ensure(lineHeight);
+            flow.y -= lineHeight;
+          } else if (index > 0) {
+            x += spacing;
+          }
+          const target = page(flow.page);
+          target.drawText(label, {
+            x,
+            y: flow.y + size * 0.28,
+            size,
+            font: semibold,
+            color: color(P.accent),
+          });
+          linkArea(target, x, flow.y - 1, width, size * 1.3, link.url);
+          x += width;
+        });
+        flow.space(4);
+      }
       if (reference.skills.length > 0) {
         const size = 7.6;
         let x = flow.x + indent;

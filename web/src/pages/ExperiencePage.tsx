@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
+import { linkLabel } from "../lib/cvDocument";
 import {
   formatPeriod,
   LANGUAGE_LEVELS,
   parseSkills,
   sortEducation,
   profileInputSchema,
+  EXPERIENCE_LIMITS,
   referenceInputSchema,
+  referenceLinkSchema,
   referenceLabel,
   sortReferences,
   toApiError,
@@ -49,7 +52,12 @@ export function fieldErrors(error: ZodError, copy: Copy["experience"]): FieldErr
   const result: FieldErrors = {};
   for (const issue of error.issues) {
     const field = String(issue.path[0] ?? "");
-    result[field] ??= messages[issue.message] ?? copy.required;
+    result[field] ??=
+      field === "links" && issue.message === "too_many"
+        ? copy.tooManyLinks
+        : field === "links"
+          ? copy.invalidUrl
+          : (messages[issue.message] ?? copy.required);
   }
   return result;
 }
@@ -279,6 +287,18 @@ export function ExperiencePage({
                       {reference.role} · {period(reference)}
                     </p>
                     <p className="reference-body">{reference.contribution}</p>
+                    {reference.links.length > 0 && (
+                      <ul className="reference-links" aria-label={text.links}>
+                        {reference.links.map((link) => (
+                          <li key={link}>
+                            <a href={link} target="_blank" rel="noreferrer noopener">
+                              <Icon name="link" size={14} />
+                              <span>{linkLabel(link)}</span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     <div className="reference-footer">
                       <SkillUsageChips reference={reference} copy={copy} />
                       <span className="reference-buttons">
@@ -916,6 +936,7 @@ type ReferenceDraft = {
   ongoing: boolean;
   contribution: string;
   skills: string;
+  links: string[];
 };
 
 /** What the reference form starts from: a saved reference or a suggestion from a CV. */
@@ -927,6 +948,7 @@ export type ReferenceFormInitial = {
   ongoing: boolean;
   contribution: string;
   skills: string[];
+  links?: string[];
 };
 
 export function ReferenceForm({
@@ -955,12 +977,13 @@ export function ReferenceForm({
     ongoing: initial?.ongoing ?? false,
     contribution: initial?.contribution ?? "",
     skills: initial?.skills.join(", ") ?? "",
+    links: initial?.links ?? [],
   });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const set =
-    (field: Exclude<keyof ReferenceDraft, "ongoing">) => (event: { target: { value: string } }) =>
+    (field: Exclude<keyof ReferenceDraft, "ongoing" | "links">) => (event: { target: { value: string } }) =>
       setValues((current) => ({ ...current, [field]: event.target.value }));
 
   useEffect(() => {
@@ -975,6 +998,7 @@ export function ReferenceForm({
       end: values.ongoing ? null : values.end,
       contribution: values.contribution,
       skills: parseSkills(values.skills),
+      links: values.links,
     });
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error, text));
@@ -1049,8 +1073,97 @@ export function ReferenceForm({
       <Field label={text.skills} hint={text.skillsHint} error={errors.skills}>
         <input value={values.skills} onChange={set("skills")} />
       </Field>
+      <LinkRows
+        links={values.links}
+        error={errors.links}
+        copy={copy}
+        onChange={(links) => setValues((current) => ({ ...current, links }))}
+      />
       <FormActions busy={busy} copy={copy} onCancel={onCancel} onDelete={onDelete} />
     </form>
+  );
+}
+
+/** Project links of a reference: one address per row, added and removed one at a time. */
+function LinkRows({
+  links,
+  error,
+  copy,
+  onChange,
+}: {
+  links: string[];
+  error?: string;
+  copy: Copy;
+  onChange: (links: string[]) => void;
+}) {
+  const text = copy.experience;
+  const [focus, setFocus] = useState<number | null>(null);
+  const inputs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (focus !== null) {
+      inputs.current[focus]?.focus();
+      setFocus(null);
+    }
+  }, [focus]);
+
+  return (
+    <fieldset className="certificate-rows link-rows">
+      <legend>{text.links}</legend>
+      {links.map((link, index) => {
+        const invalid = Boolean(error) && link.trim() !== "" && !referenceLinkSchema.safeParse(link).success;
+        return (
+          <div key={index} className="link-row">
+            <Icon name="link" size={16} />
+            <input
+              ref={(element) => {
+                inputs.current[index] = element;
+              }}
+              type="url"
+              inputMode="url"
+              aria-label={`${text.links} ${index + 1}`}
+              placeholder="https://"
+              value={link}
+              onChange={(event) =>
+                onChange(links.map((value, position) => (position === index ? event.target.value : value)))
+              }
+              maxLength={EXPERIENCE_LIMITS.link}
+              aria-invalid={invalid || undefined}
+              autoCapitalize="none"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              className="icon-button small-button"
+              onClick={() => onChange(links.filter((_, position) => position !== index))}
+              aria-label={text.removeLink(link)}
+              title={text.removeLink(link)}
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
+      {error ? (
+        <small className="field-error" role="alert">
+          {error}
+        </small>
+      ) : (
+        <small className="muted">{text.linksHint}</small>
+      )}
+      <button
+        type="button"
+        className="pill tertiary"
+        onClick={() => {
+          onChange([...links, ""]);
+          setFocus(links.length);
+        }}
+        disabled={links.length >= EXPERIENCE_LIMITS.linksPerReference}
+      >
+        <Icon name="plus" size={16} />
+        {text.addLink}
+      </button>
+    </fieldset>
   );
 }
 
