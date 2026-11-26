@@ -1,4 +1,8 @@
 import {
+  parseMarkdown,
+  toMarkdown,
+  type MarkdownBlock,
+  type MarkdownInline,
   CV_THEMES,
   cvMatrix,
   cvRoles,
@@ -244,7 +248,7 @@ export function cvMarkdown(cv: CvDocument): string {
         "",
         `*${md(reference.role)} · ${md(reference.period)}*`,
         "",
-        md(reference.contribution),
+        toMarkdown(parseMarkdown(reference.contribution)),
       );
       if (reference.links.length > 0) {
         lines.push(
@@ -408,7 +412,7 @@ const MARGIN = 40;
  * further pages independently; page numbers are added once the page count is known.
  */
 export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
-  const [{ PDFDocument, PDFName, PDFString, rgb }, fontkit, regularUrl, semiboldUrl, boldUrl] = await Promise.all([
+  const [{ PDFDocument, PDFName, PDFString, degrees, rgb }, fontkit, regularUrl, semiboldUrl, boldUrl] = await Promise.all([
     import("pdf-lib"),
     import("@pdf-lib/fontkit"),
     import("inter-font/ttf/Inter-Regular.ttf?url"),
@@ -663,6 +667,158 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
     }
     space(amount: number) {
       this.y -= amount;
+    }
+    /**
+     * Markdown text (see `parseMarkdown`): paragraphs and lists, with bold, italic, code and
+     * clickable links wrapping together. Italic is the regular face, slanted.
+     */
+    rich(
+      blocks: MarkdownBlock[],
+      settings: { size?: number; color?: Rgb; gap?: number; indent?: number; leading?: number } = {},
+    ) {
+      const size = settings.size ?? 9.5;
+      const lineHeight = size * (settings.leading ?? 1.42);
+      const indent = settings.indent ?? 0;
+      const ink = settings.color ?? this.colors.text;
+      const fontOf = (inline: MarkdownInline) =>
+        inline.code ? semibold : inline.bold ? bold : regular;
+      /** Body text, or a heading's larger size and the accent or ink colour. */
+      type Run = { size: number; lineHeight: number; color: Rgb };
+      const bodyRun: Run = { size, lineHeight, color: ink };
+      type Word = { text: string; inline: MarkdownInline; width: number; space: boolean };
+
+      /** Words with their style; `null` is a line break inside a paragraph or item. */
+      const words = (inlines: MarkdownInline[], size: number) => {
+        const out: (Word | null)[] = [];
+        let space = false;
+        for (const inline of inlines) {
+          // A code span is one highlighted unit, like a skill tag.
+          const parts = inline.code
+            ? [clean(inline.text.replace(/\s+/g, " ").trim())]
+            : clean(inline.text).split(/(\s+)/);
+          for (const part of parts) {
+            if (!part) {
+              continue;
+            }
+            if (/^\s+$/.test(part)) {
+              if (part.includes("\n")) {
+                out.push(null);
+                space = false;
+              } else {
+                space = true;
+              }
+              continue;
+            }
+            const width = inline.code
+              ? semibold.widthOfTextAtSize(part, size * 0.92) + 4
+              : fontOf(inline).widthOfTextAtSize(part, size);
+            out.push({ text: part, inline, width, space: space && out.length > 0 });
+            space = false;
+          }
+        }
+        return out;
+      };
+
+      const lines = (inlines: MarkdownInline[], width: number, size: number) => {
+        const spaceWidth = regular.widthOfTextAtSize(" ", size);
+        const result: Word[][] = [[]];
+        let used = 0;
+        for (const word of words(inlines, size)) {
+          const line = result[result.length - 1]!;
+          if (word === null) {
+            result.push([]);
+            used = 0;
+            continue;
+          }
+          const add = (line.length > 0 && word.space ? spaceWidth : 0) + word.width;
+          if (line.length > 0 && used + add > width) {
+            result.push([{ ...word, space: false }]);
+            used = word.width;
+          } else {
+            line.push(line.length === 0 ? { ...word, space: false } : word);
+            used += add;
+          }
+        }
+        return result.filter((line, index) => line.length > 0 || index < result.length - 1);
+      };
+
+      const draw = (inlines: MarkdownInline[], left: number, marker?: string, run = bodyRun) => {
+        const { size, lineHeight } = run;
+        const spaceWidth = regular.widthOfTextAtSize(" ", size);
+        lines(inlines, this.width - left, size).forEach((line, index) => {
+          const target = this.ensure(lineHeight);
+          this.y -= lineHeight;
+          const baseline = this.y + size * 0.28;
+          if (marker && index === 0) {
+            target.drawText(marker, {
+              x: this.x + left - regular.widthOfTextAtSize(marker, size) - 4,
+              y: baseline,
+              size,
+              font: marker === "•" ? bold : regular,
+              color: color(P.accent),
+            });
+          }
+          let x = this.x + left;
+          for (const word of line) {
+            x += word.space ? spaceWidth : 0;
+            const { inline } = word;
+            if (inline.code) {
+              target.drawRectangle({
+                x,
+                y: this.y + size * 0.02,
+                width: word.width,
+                height: size * 1.12,
+                color: color(P.tint),
+              });
+            }
+            target.drawText(word.text, {
+              x: x + (inline.code ? 2 : 0),
+              y: baseline,
+              size: inline.code ? size * 0.92 : size,
+              font: fontOf(inline),
+              color: color(inline.href || inline.code ? P.accent : run.color),
+              ...(inline.italic ? { ySkew: degrees(12) } : {}),
+            });
+            if (inline.href) {
+              linkArea(target, x, this.y, word.width, lineHeight, inline.href);
+            }
+            x += word.width;
+          }
+        });
+      };
+
+      blocks.forEach((block, index) => {
+        if (index > 0) {
+          this.y -= size * (block.type === "heading" ? 0.8 : 0.45);
+        }
+        if (block.type === "heading") {
+          const headingSize = size * [1.22, 1.1, 1][block.level - 1]!;
+          draw(
+            block.inlines.map((inline) => ({ ...inline, bold: true })),
+            indent,
+            undefined,
+            {
+              size: headingSize,
+              lineHeight: headingSize * 1.35,
+              color: block.level === 3 ? P.sub : P.ink,
+            },
+          );
+          return;
+        }
+        if (block.type === "paragraph") {
+          draw(block.inlines, indent);
+          return;
+        }
+        const last = `${block.start + block.items.length - 1}.`;
+        const markerWidth = block.ordered ? regular.widthOfTextAtSize(last, size) + 6 : 11;
+        block.items.forEach((item, itemIndex) => {
+          if (itemIndex > 0) {
+            this.y -= size * 0.18;
+          }
+          draw(item, indent + markerWidth, block.ordered ? `${block.start + itemIndex}.` : "•");
+        });
+      });
+      this.y -= settings.gap ?? 0;
     }
   }
 
@@ -936,7 +1092,13 @@ export async function cvPdf(cv: CvDocument): Promise<Uint8Array> {
         flow.text(line, { font: bold, size: 11.2, indent, leading: 1.3, color: P.ink });
       }
       flow.text(reference.role, { font: semibold, size: 9.4, color: P.sub, indent, gap: 2 });
-      flow.text(reference.contribution, { size: 9.5, indent, leading: 1.48, gap: 3, color: P.ink });
+      flow.rich(parseMarkdown(reference.contribution), {
+        size: 9.5,
+        indent,
+        leading: 1.48,
+        gap: 3,
+        color: P.ink,
+      });
       if (reference.links.length > 0) {
         // One row of clickable links, wrapping like the skill tags.
         const size = 8.2;

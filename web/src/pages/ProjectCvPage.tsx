@@ -36,6 +36,7 @@ import {
   framedPhoto,
   type CvDocument,
 } from "../lib/cvDocument";
+import { Markdown } from "../components/Markdown";
 import { EvidencePanel } from "../components/Assessment";
 import { SavedCvs } from "../components/SavedCvs";
 import { candidateFrom } from "../lib/assessment";
@@ -1103,7 +1104,7 @@ function CvPreview({ cv }: { cv: CvDocument }) {
               {!dated && <span>{reference.period}</span>}
             </div>
             <p className="cv-entry-role">{reference.role}</p>
-            <p className="cv-text">{reference.contribution}</p>
+            <Markdown text={reference.contribution} className="cv-text" />
             {reference.links.length > 0 && (
               <p className="cv-links">
                 {reference.links.map((link) => (

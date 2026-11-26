@@ -14,6 +14,7 @@ import {
   formatYears,
   profileInputSchema,
   roleRows,
+  splitRoles,
   skillRows,
   totalYears,
   type ExperienceReference,
@@ -186,6 +187,31 @@ test("work experience shows the top roles, or the chosen and added ones with the
     [
       { name: "Tech Lead", years: 9 },
       { name: "mobile lead", years: 2 },
+    ],
+  );
+});
+
+test("a role field with several roles counts each of them", () => {
+  assert.deepEqual(splitRoles("Fullstack Developer / AI Developer"), ["Fullstack Developer", "AI Developer"]);
+  assert.deepEqual(splitRoles("Fullstack Developer/AI Developer"), ["Fullstack Developer", "AI Developer"]);
+  assert.deepEqual(splitRoles("Developer & Architect"), ["Developer", "Architect"]);
+  assert.deepEqual(splitRoles("Developer, Tech Lead,"), ["Developer", "Tech Lead"]);
+  assert.deepEqual(splitRoles("Android Developer, android developer"), ["Android Developer"]);
+  for (const single of ["CI/CD Engineer", "R&D Lead", "Mobile Engineer"]) {
+    assert.deepEqual(splitRoles(single), [single]);
+  }
+  const rows = roleRows(
+    [
+      { ...references[0]!, role: "Fullstack Developer / AI Developer", start: "2024-01", end: "2024-12" },
+      { ...references[0]!, role: "AI Developer", start: "2025-01", end: "2025-12" },
+    ],
+    "2026-12",
+  );
+  assert.deepEqual(
+    rows.map((row) => [row.name, row.years, row.projects]),
+    [
+      ["AI Developer", 2, 2],
+      ["Fullstack Developer", 1, 1],
     ],
   );
 });

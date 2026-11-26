@@ -46,15 +46,15 @@ test("an ongoing reference has no end, and an end may not precede the start", ()
   assert.deepEqual(result.error!.issues[0]?.path, ["end"]);
 });
 
-test("at most 20 distinct skills are accepted", () => {
+test("at most 40 distinct skills are accepted", () => {
   for (const link of ["https://not a link", "localhost", "https://user@evil.example"]) {
     assert.equal(referenceInputSchema.safeParse({ ...reference, links: [link] }).success, false, link);
   }
 
-  const many = Array.from({ length: 21 }, (_, index) => `Skill ${index}`);
+  const many = Array.from({ length: 41 }, (_, index) => `Skill ${index}`);
   assert.equal(referenceInputSchema.safeParse({ ...reference, skills: many }).success, false);
   assert.equal(
-    referenceInputSchema.safeParse({ ...reference, skills: [...many.slice(0, 20), "skill 0"] })
+    referenceInputSchema.safeParse({ ...reference, skills: [...many.slice(0, 40), "skill 0"] })
       .success,
     true,
   );

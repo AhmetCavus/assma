@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
+import { Markdown } from "../components/Markdown";
+import { MarkdownField } from "../components/MarkdownField";
 import { linkLabel } from "../lib/cvDocument";
 import {
   formatPeriod,
@@ -241,10 +243,24 @@ export function ExperiencePage({
           <h1>{text.title}</h1>
           <p className="lead">{text.lead}</p>
         </div>
-        <a className="button" href="/experience/import" onClick={linkHandler("/experience/import")}>
-          <UploadIcon />
-          {text.importCv}
-        </a>
+        <div className="page-header-actions">
+          <a
+            className="button secondary"
+            href="/experience/new"
+            onClick={linkHandler("/experience/new")}
+          >
+            <Icon name="plus" />
+            {text.addReference}
+          </a>
+          <a
+            className="button"
+            href="/experience/import"
+            onClick={linkHandler("/experience/import")}
+          >
+            <UploadIcon />
+            {text.importCv}
+          </a>
+        </div>
       </div>
       <p className="status" aria-live="polite">
         {status}
@@ -286,7 +302,7 @@ export function ExperiencePage({
                     <p className="muted reference-meta">
                       {reference.role} · {period(reference)}
                     </p>
-                    <p className="reference-body">{reference.contribution}</p>
+                    <Markdown text={reference.contribution} className="reference-body" />
                     {reference.links.length > 0 && (
                       <ul className="reference-links" aria-label={text.links}>
                         {reference.links.map((link) => (
@@ -352,27 +368,16 @@ export function ExperiencePage({
                   </li>
                 ),
               )}
-              {editing?.kind === "reference" && editing.id === null && (
-                <li className="reference">
-                  <ReferenceForm
-                    title={text.newReference}
-                    copy={copy}
-                    onSave={(input) => saveReference(null, input)}
-                    onCancel={() => setEditing(null)}
-                    onFailure={fail}
-                  />
-                </li>
-              )}
             </ol>
             {editing?.kind !== "reference" && (
-              <button
-                type="button"
+              <a
                 className="pill tertiary"
-                onClick={() => startEditing({ kind: "reference", id: null })}
+                href="/experience/new"
+                onClick={linkHandler("/experience/new")}
               >
                 <Icon name="plus" size={16} />
                 {text.addReference}
-              </button>
+              </a>
             )}
             <SkillFactsList
               facts={experience.skillFacts}
@@ -953,6 +958,7 @@ export type ReferenceFormInitial = {
 
 export function ReferenceForm({
   title,
+  showTitle = true,
   initial,
   copy,
   onSave,
@@ -961,6 +967,8 @@ export function ReferenceForm({
   onFailure,
 }: {
   title: string;
+  /** Off on a page whose own heading names the form. */
+  showTitle?: boolean;
   initial?: ReferenceFormInitial;
   copy: Copy;
   onSave: (input: ReferenceInput) => Promise<void>;
@@ -1026,7 +1034,7 @@ export function ReferenceForm({
         void submit();
       }}
     >
-      <h3>{title}</h3>
+      {showTitle && <h3>{title}</h3>}
       <Field label={text.organization} error={errors.organization}>
         <input
           value={values.organization}
@@ -1062,14 +1070,15 @@ export function ReferenceForm({
         />
         {text.ongoing}
       </label>
-      <Field label={text.contribution} hint={text.contributionHint} error={errors.contribution}>
-        <textarea
-          value={values.contribution}
-          onChange={set("contribution")}
-          maxLength={1500}
-          rows={3}
-        />
-      </Field>
+      <MarkdownField
+        label={text.contribution}
+        hint={text.contributionHint}
+        error={errors.contribution}
+        value={values.contribution}
+        maxLength={EXPERIENCE_LIMITS.contribution}
+        labels={text.markdown}
+        onChange={(contribution) => setValues((current) => ({ ...current, contribution }))}
+      />
       <Field label={text.skills} hint={text.skillsHint} error={errors.skills}>
         <input value={values.skills} onChange={set("skills")} />
       </Field>

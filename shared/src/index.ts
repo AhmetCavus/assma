@@ -19,5 +19,6 @@ export * from "./assessmentView.js";
 export * from "./eml.js";
 export * from "./skills.js";
 export * from "./cvDesign.js";
+export * from "./markdown.js";
 export * from "./locales/index.js";
 export * from "./api/client.js";

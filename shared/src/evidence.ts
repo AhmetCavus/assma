@@ -7,6 +7,7 @@ import {
   type Requirement,
   type StoredAssessment,
 } from "./assessment.js";
+import { markdownPlainText } from "./markdown.js";
 import { formalItem, type ClarifyAction, type FormalItem } from "./formal.js";
 import { technicalItem, type TechnicalItem } from "./technical.js";
 import { mentionsTerm, skillMatches } from "./terms.js";
@@ -76,7 +77,7 @@ export function cvPlainText(cv: CvEvidenceInput, candidate: Candidate): string {
     ...selected.flatMap((reference) => [
       reference.organization,
       reference.role,
-      reference.contribution,
+      markdownPlainText(reference.contribution),
       reference.skills.join(", "),
     ]),
     skills.join(", "),

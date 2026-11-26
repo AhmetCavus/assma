@@ -98,11 +98,31 @@ export function skillRows(
   return group(references, (reference) => reference.skills, today);
 }
 
+/**
+ * The roles in one role field: "Fullstack Developer / AI Developer", "Developer & Architect"
+ * and "Developer, Tech Lead" are two roles each. A slash or ampersand without spaces only
+ * separates whole roles ("Fullstack Developer/AI Developer"), so "CI/CD Engineer" and
+ * "R&D Lead" stay one role.
+ */
+export function splitRoles(role: string): string[] {
+  const words = (part: string) => part.trim().split(/\s+/).filter(Boolean).length;
+  const parts = role
+    .split(/\s*,\s*|\s+[/&]\s*|\s*[/&]\s+/)
+    .flatMap((part) => {
+      const pieces = part.split(/[/&]/);
+      return pieces.length > 1 && pieces.every((piece) => words(piece) >= 2) ? pieces : [part];
+    })
+    .map((part) => part.trim().replace(/\s+/g, " "))
+    .filter(Boolean);
+  // The first spelling of a role named twice.
+  return parts.filter((part, index) => parts.findIndex((other) => keyOf(other) === keyOf(part)) === index);
+}
+
 export function roleRows(
   references: readonly ExperienceReference[],
   today: YearMonth = currentMonth(),
 ): MatrixRow[] {
-  return group(references, (reference) => [reference.role], today);
+  return group(references, (reference) => splitRoles(reference.role), today);
 }
 
 /** Years of professional experience: every month covered by at least one reference. */
