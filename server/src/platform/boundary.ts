@@ -73,9 +73,11 @@ export function installBoundaryFirst(server: YappioServer, allowedOrigins: strin
   };
   const app = server as Express;
   app.use(boundary);
-  // Prepend after Express initialization because Yappio installs wildcard CORS in its constructor.
-  const stack = app._router.stack as unknown[];
-  stack.splice(2, 0, ...stack.splice(-1));
+  // Yappio installs wildcard CORS and its body parsers in its constructor, so move the boundary
+  // to the front. Express 5 keeps no internal layers in the router stack (Express 4 had
+  // `query` and `expressInit` at 0 and 1), so the front is index 0.
+  const stack = app.router.stack as unknown[];
+  stack.unshift(...stack.splice(-1));
   deferBodiesUnderAssma(stack);
 }
 

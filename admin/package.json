@@ -13,7 +13,7 @@
     "@assma/shared": "0.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "yappio-client": "1.0.1",
+    "yappio-client": "1.0.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {

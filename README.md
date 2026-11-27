@@ -116,7 +116,7 @@ assma adds its routes under `/api/assma` (account, experience, projects, applica
 
 ## Stack
 
-- **Yappio** (`yappio@1.3.1`, `yappio-client@1.0.1` from Verdaccio).
+- **Yappio** (`yappio@2.0.0`, `yappio-client@1.0.3` from Verdaccio).
 - **Server**: Express via Yappio, Mongoose collections on `shared-mongo` / database `assma`.
 - **Model**: one provider for the whole API, chosen with `LLM_PROVIDER` (see `.env.example`): a self-hosted model through Ollama (the default, `qwen3.5:4b` on the shared container) or an OpenAI-compatible server such as vLLM, OpenAI, or Claude. Every provider streams JSON constrained to assma's schemas (`server/src/platform/inference`); one model task runs at a time through a shared queue, and every answer is validated again. `docker exec assma-api node dist/scripts/inferenceSmoke.js` checks the configured model.
 - **Web**: React 18 + Vite, no UI framework. pdf.js and mammoth read imported CVs, pdf-lib with the embedded Inter font writes the CV PDF.

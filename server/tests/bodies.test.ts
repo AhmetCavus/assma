@@ -18,7 +18,7 @@ test("Yappio's 100 kB body parser steps aside for assma's routes, which set thei
       response.json({ size: JSON.stringify(request.body).length });
     },
   );
-  deferBodiesUnderAssma(app._router.stack as unknown[]);
+  deferBodiesUnderAssma(app.router.stack as unknown[]);
 
   const server = app.listen(0);
   const { port } = server.address() as AddressInfo;

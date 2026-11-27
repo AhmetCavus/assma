@@ -5,7 +5,7 @@ import type { Model } from "mongoose";
 const require = createRequire(import.meta.url);
 const core = path.join(path.dirname(require.resolve("yappio")), "src/core");
 
-// Yappio 1.3.1 does not export these services; this file is the only place that reaches
+// Yappio 2.0.0 does not export these services; this file is the only place that reaches
 // into the pinned package, so an upgrade has one adapter to check.
 function load<T>(file: string): T {
   return (require(path.join(core, file)) as { default: T }).default;
